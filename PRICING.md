@@ -14,7 +14,7 @@ YouTube → Transcribe → Analyze → Collage → Split → Video Gen → Merge
 |------|---------|-------|------------|------|
 | 1. Download | YouTube (yt-dlp) | 1 song | Free | $0.00 |
 | 2. Transcribe | ElevenLabs Scribe v2 | 30 sec | ~$0.28/hour | $0.002 |
-| 3. Audio Analysis | Gemini 2.5 Flash | 30s × 32 tok/s = 960 tok | $0.50/1M | ~$0.0005 |
+| 3. Audio Analysis | Gemini 3 Flash Preview | 30s × 32 tok/s = 960 tok | $1/1M audio | ~$0.002 |
 | 4. Collage Generation | Gemini Nano Banana Pro | 1 × 4K image | $0.24/image | $0.24 |
 | 5. Split Collage | ImageMagick (local) | 9 frames | Free | $0.00 |
 | 6. Audio Chunks | FFmpeg (local) | 8 chunks | Free | $0.00 |
@@ -66,10 +66,10 @@ Cheap mode savings: ~17% (mainly on collage image)
 - **Source:** [ElevenLabs Pricing](https://elevenlabs.io/pricing)
 
 ### Gemini Audio Analysis
-- **Model:** Gemini 2.5 Flash (audio input)
+- **Model:** Gemini 3 Flash Preview (audio input)
 - **Token rate:** 32 tokens/second of audio
-- **Price:** $0.50/1M input tokens + ~$3/1M output tokens
-- **30 sec cost:** ~960 input tokens + ~500 output = **~$0.002**
+- **Price:** $1/1M audio input tokens + $3/1M output tokens
+- **30 sec cost:** ~960 audio tokens + ~500 output = **~$0.002**
 - **Output:** Storyboard with shot list, timing, lyrics per shot
 - **Source:** [Gemini API Pricing](https://ai.google.dev/gemini-api/docs/pricing)
 
