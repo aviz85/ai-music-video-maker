@@ -12,8 +12,10 @@ Generate professional multi-camera music videos from audio input using AI.
 
 ```
 Audio Input → [ElevenLabs Transcribe + Gemini Analysis] → Aligned Storyboard →
-4K Collage (16:9) → Split 9 Frames → Accurate Audio Chunks → LTX Video → Merge → Final (16:9)
+4K Collage (16:9) → Split 9 Frames → Accurate Audio Chunks → LTX Video → Merge → Burn Titles → Final (16:9)
 ```
+
+**DEFAULT:** Titles/lyrics are burned onto the final video. Skip only if user explicitly says "no titles".
 
 ## CRITICAL: Timing Alignment
 
@@ -101,16 +103,25 @@ projects/
 
 ## Pipeline Steps
 
-### 1a. Transcribe Audio (ElevenLabs) - GROUND TRUTH TIMING
+### 1a. Transcribe Audio (ElevenLabs) - GROUND TRUTH TIMING ⚠️ MANDATORY FIRST
+
+**CRITICAL:** This step MUST be done BEFORE audio chunking. Word-level timing is essential for:
+1. Aligning shot boundaries to actual lyrics
+2. Generating accurate SRT for titles overlay
+3. Matching Gemini's suggested lyrics to real timestamps
 
 Use the global `transcribe` skill to get word-level timing:
 
 ```bash
 cd ~/.claude/skills/transcribe/scripts
-npx ts-node transcribe.ts <audio.mp3> --json > transcription.json
+npx tsx transcribe.ts -i <audio.mp3> -o <project>/subtitles --json
 ```
 
-Output includes word-level timestamps - these are **accurate** and should be trusted over Gemini.
+This outputs:
+- `subtitles` - JSON with word-level timing (the source of truth)
+- `subtitles.srt` - SRT file for burning titles
+
+**NEVER chunk audio based on Gemini timing alone.** Always cross-reference with ElevenLabs word timing.
 
 ### 1b. Audio Analysis (Gemini)
 
@@ -128,43 +139,65 @@ Gemini **listens deeply** and outputs readable markdown:
 
 **IMPORTANT:** Gemini must output LYRICS for each shot so Claude can align with ElevenLabs.
 
-### 1c. Claude Aligns Timing (Efficient Search)
+### 1c. Claude Aligns Timing (Two-Step Refinement)
 
-**OPTIMIZATION:** Don't read the full JSON (too long). Use two-step search:
+**The Workflow:**
+1. Gemini suggests shots with LYRICS
+2. Fuzzy search (threshold 0.8-0.9) in SRT for the sentence/words
+3. Find the **closest occurrence** to Gemini's suggested timestamp
+4. Targeted JSON search for **precise** word timing (don't read full JSON!)
+5. Refine Gemini's timing with accurate values
+6. Continue with refined shot list
 
-#### Step 1: Quick scan with SRT (shorter)
+#### Step 1: Fuzzy Search in SRT (Find Approximate Location)
+
+SRT is compact - use it to find which subtitle entry contains the target lyrics:
+
 ```bash
-# SRT is smaller - use for initial word location
-grep -n "target_word" transcription.srt
+# Find the sentence/phrase in SRT
+grep -n "מחבר וזה טוב" subtitles.srt
+# Returns: line number and approximate timing
+
+# For repeated lyrics (chorus), find ALL occurrences:
+grep -n "טה טה טה" subtitles.srt | head -5
+# Pick the one closest to Gemini's suggested time
 ```
 
-#### Step 2: Precise timing from JSON (targeted)
+**Fuzzy matching:** If exact phrase not found, search for key words with partial match (80-90% similarity). Songs have repeated lyrics - always pick the **closest occurrence** to Gemini's time.
+
+#### Step 2: Precise Timing from JSON (Targeted Search)
+
+Once you know the approximate location, search only for those specific words:
+
 ```python
-# Only when you know the approximate position
-# Search for specific words near that timestamp
+# NEVER read the full JSON - it's too long!
+# Search for specific words only
 python3 << 'EOF'
 import json
-with open('transcription_transcript.json', 'r') as f:
+with open('subtitles', 'r') as f:  # The word-level JSON
     data = json.load(f)
-keywords = ['וגם', 'אני', 'חולם']  # Target words
+
+# Target words from Gemini's lyrics for this shot
+keywords = ['מחבר', 'וזה', 'טוב']
+target_time = 7.0  # Gemini's approximate time
+
+matches = []
 for w in data['words']:
     word = w['word'].strip().replace('.', '').replace(',', '')
     if word in keywords:
-        print(f"{w['start']:.2f}-{w['end']:.2f}: {w['word']}")
+        matches.append((w['start'], w['end'], w['word']))
+
+# Find occurrence closest to target_time
+closest = min(matches, key=lambda x: abs(x[0] - target_time))
+print(f"Shot starts at: {closest[0]:.3f}s")
 EOF
 ```
 
-#### Handling Repeated Words (Songs)
-Songs repeat lyrics. Find the **closest occurrence** to Gemini's suggested timestamp:
-- If Gemini says chorus at 0:51, search for first occurrence near that time
-- If same lyrics appear at 1:30 (2nd chorus), pick the one closest to target
-
-Claude reads both outputs and:
-1. Takes Gemini's shot suggestions (angles, descriptions, lyrics)
-2. Quick-scans SRT to find approximate word location
-3. Uses targeted JSON search for exact timing
-4. Picks closest occurrence for repeated words
-5. Creates aligned shot list with accurate timestamps
+#### Refinement Rules
+- Gemini timing → approximate guide
+- SRT search → find correct occurrence (especially for repeated lyrics)
+- JSON search → exact millisecond timing
+- Use JSON timing for audio chunk boundaries
 
 **Key rule:** Show what we hear. Vocals = singer. Guitar solo = guitarist. Drums = drummer.
 
@@ -189,11 +222,24 @@ npx ts-node generate_poster.ts -d collage.jpg -a 16:9 -q 2K \
 bash scripts/split_collage.sh <collage.jpg> <output_dir>
 ```
 
-### 4. Trim Audio Chunks
+### 4. Trim Audio Chunks (Using Aligned Timing)
+
+**CRITICAL:** Use word-level timing from Step 1a to refine Gemini's suggested boundaries.
+
+Before chunking:
+1. Look at Gemini's shot list with LYRICS
+2. Find those exact words in ElevenLabs JSON
+3. Adjust start/end times to word boundaries
 
 ```bash
-ffmpeg -i audio.mp3 -ss <start> -t <duration> -y chunk_N.mp3
+# Use ALIGNED timing, not raw Gemini timing
+ffmpeg -i audio.mp3 -ss <aligned_start> -t <duration> -y chunk_N.mp3
 ```
+
+Example alignment:
+- Gemini says: Shot starts at 0:07 with lyrics "מחבר וזה"
+- ElevenLabs shows: "מחבר" starts at 7.179
+- Use 7.179 as the real start time
 
 ### 5. Generate Video Clips
 
@@ -231,9 +277,61 @@ This approach ensures:
 - Final merge uses ONE continuous audio track (no seams)
 - No choppy sound from audio chunk boundaries
 
-### 7. Lyrics Overlay (Optional)
+### 7. Burn Titles/Lyrics (DEFAULT)
 
-Add animated lyrics using Remotion. Uses LyricsOverlay composition from remotion-assistant.
+**This step is ON by default.** Skip only if user explicitly says "no titles".
+
+#### Quick Method: FFmpeg Subtitles
+
+Generate SRT from word-level JSON and burn with FFmpeg:
+
+```python
+# Generate SRT from ElevenLabs JSON
+import json
+
+with open('subtitles', 'r') as f:
+    data = json.load(f)
+
+words = [w for w in data['words'] if w['word'].strip()]
+segments = []
+current = []
+segment_start = None
+
+for w in words:
+    if segment_start is None:
+        segment_start = w['start']
+    current.append(w['word'].strip())
+
+    duration = w['end'] - segment_start
+    if len(current) >= 5 or duration >= 2.5:
+        segments.append({'start': segment_start, 'end': w['end'], 'text': ' '.join(current)})
+        current = []
+        segment_start = None
+
+if current:
+    segments.append({'start': segment_start, 'end': words[-1]['end'], 'text': ' '.join(current)})
+
+# Write SRT
+def format_time(seconds):
+    h, m = int(seconds // 3600), int((seconds % 3600) // 60)
+    s, ms = int(seconds % 60), int((seconds % 1) * 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+with open('subtitles.srt', 'w') as f:
+    for i, seg in enumerate(segments, 1):
+        f.write(f"{i}\n{format_time(seg['start'])} --> {format_time(seg['end'])}\n{seg['text']}\n\n")
+```
+
+```bash
+# Burn subtitles with Hebrew font
+ffmpeg -y -i videos/final.mp4 \
+  -vf "subtitles=subtitles.srt:force_style='FontName=Arial Hebrew,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=1,Alignment=2,MarginV=30'" \
+  -c:a copy videos/final_with_titles.mp4
+```
+
+#### Advanced: Remotion Karaoke
+
+For animated word-by-word highlighting, use Remotion:
 
 **CRITICAL: Offset Timestamps for Video Segments**
 
@@ -245,23 +343,7 @@ Video clip timing:         0.0s -  29.5s (starts at 0)
 OFFSET = 72.5 seconds (subtract from all timestamps)
 ```
 
-**Example:**
-```typescript
-// ElevenLabs says word "חולם" appears at 75.52s in full song
-// Video starts at 72.5s
-// Offset: 75.52 - 72.5 = 3.02s
-{ word: 'חולם', start: 3.02, end: 3.5 }  // relative to video start
-```
-
-**Workflow:**
-1. Get word-level timing from ElevenLabs JSON
-2. Calculate VIDEO_OFFSET = video segment start time
-3. Subtract offset from ALL word timestamps
-4. Create LyricsData with adjusted timing
-5. Render with Remotion
-
 ```bash
-# Render lyrics overlay
 cd ~/remotion-assistant
 npx remotion render CholemYosefLyrics /tmp/output.mp4 --props='{"style":"karaoke"}'
 ```
