@@ -113,7 +113,7 @@ projects/
 Use the global `transcribe` skill to get word-level timing:
 
 ```bash
-cd ~/.claude/skills/transcribe/scripts
+cd skills/transcribe/scripts
 npx tsx transcribe.ts -i <audio.mp3> -o <project>/subtitles --json
 ```
 
@@ -340,7 +340,7 @@ import { shiftLyricsTiming } from '../utils/lyricsParser';
 const offsetLyrics = shiftLyricsTiming(lyrics, -105); // Shift back by segment start
 ```
 
-**See full documentation:** `~/.claude/skills/lyrics-overlay/SKILL.md`
+**See full documentation:** `.claude/skills/lyrics-overlay/SKILL.md`
 
 ## Storyboard Output Format
 
