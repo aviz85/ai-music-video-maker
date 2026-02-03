@@ -206,6 +206,10 @@ The agent should select style based on:
 2. **Energy level** (high → bounce/neon, low → minimal/fade)
 3. **Visual aesthetic** (modern → neon, retro → typewriter, dramatic → cinematic)
 
+## Text Decay Behavior
+
+All styles have **slower decay** - words linger ~1.5 seconds after their timing ends for better readability. The fade starts AFTER the line ends, not before.
+
 ## Dependencies
 
 - `~/remotion-assistant` - Remotion project
