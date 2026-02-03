@@ -11,9 +11,23 @@ Generate professional multi-camera music videos from audio input using AI.
 ## Pipeline Overview
 
 ```
-Audio Input → Gemini Deep Analysis → Storyboard (markdown) → 4K Collage →
-Split 9 Frames → Audio Chunks → LTX Video Generation → Merge → Final Video
+Audio Input → Gemini Deep Analysis → Storyboard (markdown) → 4K Collage (16:9) →
+Split 9 Frames (16:9 each) → Audio Chunks → LTX Video Generation → Merge → Final Video (16:9)
 ```
+
+## Default Format: 16:9
+
+**CRITICAL:** All assets use 16:9 aspect ratio by default:
+- Collage: 16:9 (e.g., 3840x2160 for 4K)
+- Each frame: 16:9 (3x3 grid, no borders!)
+- Final video: 16:9
+
+When generating the collage, ALWAYS use `-a 16:9` flag with image-generation skill.
+
+The 3x3 grid of 16:9 frames naturally creates a 16:9 overall collage:
+- 3 columns × 16 = 48
+- 3 rows × 9 = 27
+- 48:27 = 16:9 ✓
 
 ## Quick Start
 
@@ -83,9 +97,20 @@ Gemini **listens deeply** and outputs readable markdown:
 
 **Key rule:** Show what we hear. Vocals = singer. Guitar solo = guitarist. Drums = drummer.
 
-### 2. Generate 4K Collage
+### 2. Generate 4K Collage (16:9)
 
-Use image-generation skill with detailed 3x3 grid prompt based on storyboard angles.
+Use image-generation skill with `-a 16:9` and detailed 3x3 grid prompt:
+
+```bash
+# ALWAYS use 16:9 aspect ratio!
+npx ts-node generate_poster.ts -d collage.jpg -a 16:9 -q 2K \
+  "A 3x3 grid of 9 camera angles, SEAMLESS with ZERO borders between frames..."
+```
+
+**CRITICAL prompt rules:**
+- Include "SEAMLESS with ZERO borders between frames"
+- Each frame must show MID-ACTION movement (not static poses)
+- Emphasize "LIVE PERFORMANCE" feel
 
 ### 3. Split Collage
 

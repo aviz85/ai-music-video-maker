@@ -142,7 +142,7 @@ Format: [START-END] ANGLE_X - Description | AUDIO REASON
   console.log(`Duration to analyze: ${audioDuration} seconds`);
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3-flash-preview",
     contents: [
       {
         role: "user",
