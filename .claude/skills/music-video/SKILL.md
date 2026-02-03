@@ -231,6 +231,43 @@ This approach ensures:
 - Final merge uses ONE continuous audio track (no seams)
 - No choppy sound from audio chunk boundaries
 
+### 7. Lyrics Overlay (Optional)
+
+Add animated lyrics using Remotion. Uses LyricsOverlay composition from remotion-assistant.
+
+**CRITICAL: Offset Timestamps for Video Segments**
+
+When working with a video segment (not full song), all lyrics timestamps must be offset:
+
+```
+Original song timing:     72.5s - 102.0s (chorus section)
+Video clip timing:         0.0s -  29.5s (starts at 0)
+OFFSET = 72.5 seconds (subtract from all timestamps)
+```
+
+**Example:**
+```typescript
+// ElevenLabs says word "חולם" appears at 75.52s in full song
+// Video starts at 72.5s
+// Offset: 75.52 - 72.5 = 3.02s
+{ word: 'חולם', start: 3.02, end: 3.5 }  // relative to video start
+```
+
+**Workflow:**
+1. Get word-level timing from ElevenLabs JSON
+2. Calculate VIDEO_OFFSET = video segment start time
+3. Subtract offset from ALL word timestamps
+4. Create LyricsData with adjusted timing
+5. Render with Remotion
+
+```bash
+# Render lyrics overlay
+cd ~/remotion-assistant
+npx remotion render CholemYosefLyrics /tmp/output.mp4 --props='{"style":"karaoke"}'
+```
+
+**Styles:** `karaoke` (words highlight), `fade` (words fade in), `minimal` (line shows, current word highlights)
+
 ## Storyboard Output Format
 
 Gemini outputs readable markdown (not JSON) with **VIDEO PROMPT** for each shot:
