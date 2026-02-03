@@ -277,78 +277,70 @@ This approach ensures:
 - Final merge uses ONE continuous audio track (no seams)
 - No choppy sound from audio chunk boundaries
 
-### 7. Burn Titles/Lyrics (DEFAULT)
+### 7. Add Lyrics Overlay (DEFAULT) - Use `lyrics-overlay` Skill
 
 **This step is ON by default.** Skip only if user explicitly says "no titles".
 
-#### Quick Method: FFmpeg Subtitles
+Use the global `lyrics-overlay` skill for beautiful animated titles with multiple templates.
 
-Generate SRT from word-level JSON and burn with FFmpeg:
+#### Available Templates
 
-```python
-# Generate SRT from ElevenLabs JSON
-import json
+| Template | Description | Best For |
+|----------|-------------|----------|
+| `karaoke` | Spring animation, current word glows | **Default for music** |
+| `minimal` | Full line, current word highlights | Clean look |
+| `fade` | Words fade in smoothly | Narration |
+| `hero` | Large dramatic center text | Impact moments |
 
-with open('subtitles', 'r') as f:
-    data = json.load(f)
+#### Quick Usage
 
-words = [w for w in data['words'] if w['word'].strip()]
-segments = []
-current = []
-segment_start = None
-
-for w in words:
-    if segment_start is None:
-        segment_start = w['start']
-    current.append(w['word'].strip())
-
-    duration = w['end'] - segment_start
-    if len(current) >= 5 or duration >= 2.5:
-        segments.append({'start': segment_start, 'end': w['end'], 'text': ' '.join(current)})
-        current = []
-        segment_start = None
-
-if current:
-    segments.append({'start': segment_start, 'end': words[-1]['end'], 'text': ' '.join(current)})
-
-# Write SRT
-def format_time(seconds):
-    h, m = int(seconds // 3600), int((seconds % 3600) // 60)
-    s, ms = int(seconds % 60), int((seconds % 1) * 1000)
-    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
-
-with open('subtitles.srt', 'w') as f:
-    for i, seg in enumerate(segments, 1):
-        f.write(f"{i}\n{format_time(seg['start'])} --> {format_time(seg['end'])}\n{seg['text']}\n\n")
-```
-
+1. Copy video + subtitles JSON to Remotion public folder:
 ```bash
-# Burn subtitles with Hebrew font
-ffmpeg -y -i videos/final.mp4 \
-  -vf "subtitles=subtitles.srt:force_style='FontName=Arial Hebrew,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=1,Alignment=2,MarginV=30'" \
-  -c:a copy videos/final_with_titles.mp4
+cp videos/final.mp4 ~/remotion-assistant/public/videos/
+cp subtitles ~/remotion-assistant/public/lyrics/subtitles.json
 ```
 
-#### Advanced: Remotion Karaoke
+2. Create composition using LyricsOverlay:
+```typescript
+// ~/remotion-assistant/src/compositions/MyVideoLyrics.tsx
+import { LyricsOverlay, parseElevenLabsTranscript } from './LyricsOverlay';
+import { staticFile } from 'remotion';
 
-For animated word-by-word highlighting, use Remotion:
+const transcript = require('../../public/lyrics/subtitles.json');
 
-**CRITICAL: Offset Timestamps for Video Segments**
+export const MyVideoLyrics: React.FC = () => {
+  const lyrics = parseElevenLabsTranscript(transcript, {
+    maxWordsPerLine: 6,
+    lineGapThreshold: 0.8
+  });
 
-When working with a video segment (not full song), all lyrics timestamps must be offset:
-
+  return (
+    <LyricsOverlay
+      videoSrc={staticFile('videos/final.mp4')}
+      lyrics={lyrics}
+      style="karaoke"
+      isRTL={true}
+      highlightColor="#FF6B35"
+    />
+  );
+};
 ```
-Original song timing:     72.5s - 102.0s (chorus section)
-Video clip timing:         0.0s -  29.5s (starts at 0)
-OFFSET = 72.5 seconds (subtract from all timestamps)
-```
 
+3. Register in Root.tsx and render:
 ```bash
 cd ~/remotion-assistant
-npx remotion render CholemYosefLyrics /tmp/output.mp4 --props='{"style":"karaoke"}'
+npx remotion render MyVideoLyrics out/final_with_lyrics.mp4
 ```
 
-**Styles:** `karaoke` (words highlight), `fade` (words fade in), `minimal` (line shows, current word highlights)
+#### For Segment Videos: Offset Timing
+
+If video is extracted from longer song:
+```typescript
+import { shiftLyricsTiming } from '../utils/lyricsParser';
+const offsetLyrics = shiftLyricsTiming(lyrics, -105); // Shift back by segment start
+```
+
+**See full documentation:** `~/.claude/skills/lyrics-overlay/SKILL.md`
 
 ## Storyboard Output Format
 
