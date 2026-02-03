@@ -8,6 +8,7 @@ credentials.json
 
 # API keys in skill scripts
 .claude/skills/*/scripts/.env
+skills/*/scripts/.env
 
 # Projects - ignore all except example
 projects/*
