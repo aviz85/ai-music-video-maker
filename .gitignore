@@ -17,6 +17,13 @@ projects/*/*.mp3
 projects/*/*.mp4
 projects/*/*.jpg
 projects/*/*.png
+projects/*.mp3
+projects/*.mp4
+
+# Keep transcripts and storyboards
+!projects/*/*.md
+!projects/*/transcription
+!projects/*/transcription.json
 
 # Keep projects folder structure
 !projects/.gitkeep
