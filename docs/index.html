@@ -636,6 +636,45 @@
             margin-top: 4px;
         }
 
+        .carousel-arrows {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            display: flex;
+            justify-content: space-between;
+            padding: 0 8px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .carousel-arrow {
+            width: 44px;
+            height: 44px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid var(--signal);
+            color: var(--signal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.2s;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .carousel-arrow:hover {
+            background: var(--signal);
+            color: var(--black);
+        }
+
+        .carousel-arrow svg {
+            width: 24px;
+            height: 24px;
+        }
+
         .monitor-footer {
             display: flex;
             justify-content: space-between;
@@ -1170,6 +1209,7 @@
             </a>
             <div class="nav-links">
                 <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
                 <a href="#installation">Install</a>
                 <a href="#quickstart">Quick Start</a>
                 <a href="https://github.com/aviz85/ai-music-video-maker" target="_blank" class="nav-cta">GitHub</a>
@@ -1250,6 +1290,18 @@
                         </div>
                         <div class="monitor-screen">
                             <div class="video-carousel">
+                                <div class="carousel-arrows">
+                                    <button class="carousel-arrow" id="carousel-prev">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                            <path d="M15 19l-7-7 7-7"/>
+                                        </svg>
+                                    </button>
+                                    <button class="carousel-arrow" id="carousel-next">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                            <path d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <div class="carousel-slides">
                                     <div class="carousel-slide active" data-title="טאטע תטהר">
                                         <iframe
@@ -1267,10 +1319,19 @@
                                             allowfullscreen>
                                         </iframe>
                                     </div>
+                                    <div class="carousel-slide" data-title="Believer - Imagine Dragons">
+                                        <iframe
+                                            src="https://www.youtube.com/embed/sqtAVawIaLA"
+                                            title="Believer - AI Music Video"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowfullscreen>
+                                        </iframe>
+                                    </div>
                                 </div>
                                 <div class="carousel-nav">
                                     <button class="carousel-dot active" data-slide="0"></button>
                                     <button class="carousel-dot" data-slide="1"></button>
+                                    <button class="carousel-dot" data-slide="2"></button>
                                 </div>
                                 <div class="carousel-label">טאטע תטהר</div>
                             </div>
@@ -1336,6 +1397,68 @@
         <div class="visual-break-content">
             <h2><span>9</span> Angles. One Vision.</h2>
             <p>Multi-camera concert experience from a single AI generation.</p>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="features" style="background: var(--charcoal); border-top: 1px solid var(--ash);">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-tag">// Cost</div>
+                <h2 class="section-title">~$1.44 per 30-second clip</h2>
+                <p class="section-desc">Transparent pricing. Pay only for what you use. No subscriptions.</p>
+            </div>
+
+            <div class="features-grid" style="grid-template-columns: repeat(2, 1fr);">
+                <div class="feature-cell">
+                    <div class="feature-num" style="color: var(--signal);">90%</div>
+                    <h3 class="feature-title">LTX-2 Video Generation</h3>
+                    <p class="feature-desc">
+                        <strong style="color: var(--signal);">$0.04/sec @ 720p</strong><br>
+                        30 sec = $1.20 via fal.ai<br>
+                        <span style="color: var(--fog);">720p is default. 1080p = $0.06/sec</span>
+                    </p>
+                </div>
+                <div class="feature-cell">
+                    <div class="feature-num" style="color: var(--warning);">17%</div>
+                    <h3 class="feature-title">4K Collage Image</h3>
+                    <p class="feature-desc">
+                        <strong style="color: var(--warning);">$0.24/image</strong><br>
+                        Gemini Nano Banana Pro<br>
+                        <span style="color: var(--fog);">9 camera angles from one 3x3 grid</span>
+                    </p>
+                </div>
+                <div class="feature-cell">
+                    <div class="feature-num" style="color: var(--fog);">~0%</div>
+                    <h3 class="feature-title">Transcription</h3>
+                    <p class="feature-desc">
+                        <strong>$0.002</strong><br>
+                        ElevenLabs Scribe v2<br>
+                        <span style="color: var(--fog);">$0.28/hour = pennies per clip</span>
+                    </p>
+                </div>
+                <div class="feature-cell">
+                    <div class="feature-num" style="color: var(--fog);">~0%</div>
+                    <h3 class="feature-title">Audio Analysis</h3>
+                    <p class="feature-desc">
+                        <strong>$0.0005</strong><br>
+                        Gemini 2.5 Flash<br>
+                        <span style="color: var(--fog);">32 tokens/sec audio input</span>
+                    </p>
+                </div>
+            </div>
+
+            <div style="max-width: 800px; margin: 48px auto 0; text-align: center;">
+                <div style="display: inline-flex; gap: 24px; flex-wrap: wrap; justify-content: center;">
+                    <div style="background: var(--steel); border: 1px solid var(--ash); padding: 20px 32px;">
+                        <div style="font-family: var(--mono); font-size: 10px; color: var(--fog); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Free</div>
+                        <div style="font-size: 14px; color: var(--silver);">FFmpeg • ImageMagick • Remotion • YouTube API</div>
+                    </div>
+                </div>
+                <p style="margin-top: 32px; font-family: var(--mono); font-size: 12px; color: var(--fog);">
+                    Cheap mode: ~$1.20/clip (FLUX klein for collage)
+                </p>
+            </div>
         </div>
     </section>
 
@@ -1506,26 +1629,63 @@ EOF</pre>
         const carouselDots = document.querySelectorAll('.carousel-dot');
         const carouselSlides = document.querySelectorAll('.carousel-slide');
         const carouselLabel = document.querySelector('.carousel-label');
+        const prevBtn = document.getElementById('carousel-prev');
+        const nextBtn = document.getElementById('carousel-next');
+        let currentSlide = 0;
+        let autoRotateInterval;
 
+        function goToSlide(index) {
+            currentSlide = (index + carouselSlides.length) % carouselSlides.length;
+
+            carouselSlides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === currentSlide);
+            });
+
+            carouselDots.forEach((d, i) => {
+                d.classList.toggle('active', i === currentSlide);
+            });
+
+            carouselLabel.textContent = carouselSlides[currentSlide].dataset.title;
+        }
+
+        function nextSlide() {
+            goToSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            goToSlide(currentSlide - 1);
+        }
+
+        // Arrow buttons
+        prevBtn.addEventListener('click', () => {
+            prevSlide();
+            resetAutoRotate();
+        });
+
+        nextBtn.addEventListener('click', () => {
+            nextSlide();
+            resetAutoRotate();
+        });
+
+        // Dot navigation
         carouselDots.forEach(dot => {
             dot.addEventListener('click', () => {
-                const slideIndex = parseInt(dot.dataset.slide);
-
-                // Update slides
-                carouselSlides.forEach((slide, i) => {
-                    slide.classList.toggle('active', i === slideIndex);
-                });
-
-                // Update dots
-                carouselDots.forEach((d, i) => {
-                    d.classList.toggle('active', i === slideIndex);
-                });
-
-                // Update label
-                const activeSlide = carouselSlides[slideIndex];
-                carouselLabel.textContent = activeSlide.dataset.title;
+                goToSlide(parseInt(dot.dataset.slide));
+                resetAutoRotate();
             });
         });
+
+        // Auto-rotate every 8 seconds
+        function startAutoRotate() {
+            autoRotateInterval = setInterval(nextSlide, 8000);
+        }
+
+        function resetAutoRotate() {
+            clearInterval(autoRotateInterval);
+            startAutoRotate();
+        }
+
+        startAutoRotate();
     </script>
 </body>
 </html>
