@@ -1309,7 +1309,7 @@
                                 <div class="carousel-slides">
                                     <div class="carousel-slide active" data-title="טאטע תטהר">
                                         <iframe
-                                            src="https://www.youtube.com/embed/ln-iJj8Qbq4"
+                                            src="https://www.youtube.com/embed/ln-iJj8Qbq4?enablejsapi=1&rel=0&modestbranding=1&iv_load_policy=3&color=white"
                                             title="טאטע תטהר - AI Music Video"
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowfullscreen>
@@ -1317,7 +1317,7 @@
                                     </div>
                                     <div class="carousel-slide" data-title="חולם כמו יוסף">
                                         <iframe
-                                            src="https://www.youtube.com/embed/1dJDWfkGC9A"
+                                            src="https://www.youtube.com/embed/1dJDWfkGC9A?enablejsapi=1&rel=0&modestbranding=1&iv_load_policy=3&color=white"
                                             title="חולם כמו יוסף - AI Music Video"
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowfullscreen>
@@ -1325,7 +1325,7 @@
                                     </div>
                                     <div class="carousel-slide" data-title="Believer - Imagine Dragons">
                                         <iframe
-                                            src="https://www.youtube.com/embed/sqtAVawIaLA"
+                                            src="https://www.youtube.com/embed/sqtAVawIaLA?enablejsapi=1&rel=0&modestbranding=1&iv_load_policy=3&color=white"
                                             title="Believer - AI Music Video"
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowfullscreen>
@@ -1689,15 +1689,64 @@ EOF</pre>
         });
 
         // Auto-rotate every 8 seconds
+        let isVideoPlaying = false;
+
         function startAutoRotate() {
-            autoRotateInterval = setInterval(nextSlide, 8000);
+            if (!isVideoPlaying) {
+                autoRotateInterval = setInterval(nextSlide, 8000);
+            }
+        }
+
+        function stopAutoRotate() {
+            clearInterval(autoRotateInterval);
         }
 
         function resetAutoRotate() {
-            clearInterval(autoRotateInterval);
+            stopAutoRotate();
             startAutoRotate();
         }
 
+        // Listen for YouTube player state changes via postMessage
+        window.addEventListener('message', function(event) {
+            // Check if message is from YouTube
+            if (event.origin !== 'https://www.youtube.com') return;
+
+            try {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+
+                // YouTube sends player state: 1 = playing, 2 = paused, 0 = ended
+                if (data.event === 'onStateChange') {
+                    if (data.info === 1) {
+                        // Video started playing - stop auto-rotate
+                        isVideoPlaying = true;
+                        stopAutoRotate();
+                    } else if (data.info === 2 || data.info === 0) {
+                        // Video paused or ended - resume auto-rotate
+                        isVideoPlaying = false;
+                        startAutoRotate();
+                    }
+                }
+            } catch (e) {
+                // Not a JSON message, ignore
+            }
+        });
+
+        // Initialize YouTube API listening on all iframes
+        function initYouTubeListeners() {
+            const iframes = document.querySelectorAll('.carousel-slide iframe');
+            iframes.forEach(iframe => {
+                // Tell YouTube to send us state change events
+                iframe.addEventListener('load', function() {
+                    iframe.contentWindow.postMessage(JSON.stringify({
+                        event: 'listening',
+                        id: 1,
+                        channel: 'widget'
+                    }), 'https://www.youtube.com');
+                });
+            });
+        }
+
+        initYouTubeListeners();
         startAutoRotate();
     </script>
 </body>
