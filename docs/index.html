@@ -1,591 +1,611 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Music Video Maker | Multi-Camera AI Music Videos from Audio</title>
-    <meta name="description" content="Generate professional multi-camera music videos from audio using AI. Features ElevenLabs timing, Gemini analysis, 9 camera angles, LTX video generation, and lyrics overlay.">
+    <title>AI Music Video Maker</title>
+    <meta name="description" content="Generate multi-camera music videos from audio using AI. 9 angles, perfect sync, lyrics overlay.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>">
 
-    <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
-
-    <!-- Fonts -->
+    <!-- Fonts: Departure Mono for that broadcast feel, plus a clean sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            /* Cinematic dark palette */
-            --bg-void: #050508;
-            --bg-deep: #0a0a10;
-            --bg-surface: #111118;
-            --bg-elevated: #18181f;
-            --bg-hover: #1f1f28;
+            --black: #0a0a0a;
+            --charcoal: #141414;
+            --steel: #1e1e1e;
+            --ash: #2a2a2a;
+            --smoke: #404040;
+            --fog: #666666;
+            --silver: #999999;
+            --chalk: #cccccc;
+            --white: #f0f0f0;
 
-            /* Text hierarchy */
-            --text-primary: #f5f5f7;
-            --text-secondary: #94949e;
-            --text-muted: #5c5c66;
+            --signal: #00ff88;
+            --signal-dim: rgba(0, 255, 136, 0.15);
+            --signal-glow: rgba(0, 255, 136, 0.4);
+            --error: #ff3366;
+            --warning: #ffaa00;
 
-            /* Accent - shifted to coral/amber for warmth */
-            --accent: #ff6b4a;
-            --accent-muted: rgba(255, 107, 74, 0.15);
-            --accent-glow: rgba(255, 107, 74, 0.25);
-
-            /* Secondary accent - violet for depth */
-            --violet: #8b7cf6;
-            --violet-muted: rgba(139, 124, 246, 0.15);
-
-            /* Borders */
-            --border: rgba(255, 255, 255, 0.06);
-            --border-hover: rgba(255, 255, 255, 0.12);
-
-            /* Functional */
-            --success: #4ade80;
-
-            /* Spacing scale */
-            --space-xs: 4px;
-            --space-sm: 8px;
-            --space-md: 16px;
-            --space-lg: 24px;
-            --space-xl: 40px;
-            --space-2xl: 64px;
-            --space-3xl: 100px;
-
-            /* Type scale */
-            --text-xs: 0.75rem;
-            --text-sm: 0.875rem;
-            --text-base: 1rem;
-            --text-lg: 1.125rem;
-            --text-xl: 1.25rem;
-            --text-2xl: 1.5rem;
-            --text-3xl: 2rem;
-            --text-4xl: 2.5rem;
-            --text-5xl: 3.5rem;
+            --mono: 'IBM Plex Mono', 'Heebo', monospace;
+            --sans: 'Outfit', 'Heebo', -apple-system, sans-serif;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        html {
-            scroll-behavior: smooth;
-        }
+        html { scroll-behavior: smooth; }
 
         body {
-            font-family: 'Space Grotesk', 'Heebo', -apple-system, sans-serif;
-            background: var(--bg-void);
-            color: var(--text-primary);
+            font-family: var(--sans);
+            background: var(--black);
+            color: var(--white);
             line-height: 1.6;
-            min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
         }
 
-        /* Selection */
+        /* Scanline overlay - subtle CRT effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 10000;
+        }
+
+        /* Noise texture */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.015;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+        }
+
         ::selection {
-            background: var(--accent-muted);
-            color: var(--text-primary);
+            background: var(--signal);
+            color: var(--black);
         }
 
-        /* Container */
         .container {
-            max-width: 1120px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 var(--space-lg);
+            padding: 0 24px;
         }
 
-        .container--narrow {
-            max-width: 800px;
-        }
-
-        /* Navigation */
-        nav {
+        /* Top bar - like a broadcast control panel */
+        .top-bar {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 1000;
-            padding: var(--space-md) 0;
+            background: var(--black);
+            border-bottom: 1px solid var(--ash);
+            padding: 12px 0;
             transition: all 0.3s ease;
         }
 
-        nav.scrolled {
-            background: rgba(5, 5, 8, 0.85);
-            backdrop-filter: blur(20px) saturate(180%);
-            border-bottom: 1px solid var(--border);
+        .top-bar.scrolled {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
         }
 
-        nav .container {
+        .top-bar .container {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
         .logo {
-            font-size: var(--text-lg);
-            font-weight: 600;
-            color: var(--text-primary);
-            text-decoration: none;
             display: flex;
             align-items: center;
-            gap: var(--space-sm);
-            letter-spacing: -0.02em;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--white);
         }
 
-        .logo-icon {
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, var(--accent) 0%, var(--violet) 100%);
-            border-radius: 8px;
+        .logo-mark {
+            width: 36px;
+            height: 36px;
+            background: var(--charcoal);
+            border: 2px solid var(--signal);
             display: flex;
             align-items: center;
             justify-content: center;
+            font-family: var(--mono);
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--signal);
+            position: relative;
         }
 
-        .logo-icon svg {
-            width: 18px;
-            height: 18px;
-            color: white;
+        .logo-mark::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 8px;
+            height: 8px;
+            background: var(--signal);
+            border-radius: 50%;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .logo-text {
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
 
         .nav-links {
             display: flex;
             align-items: center;
-            gap: var(--space-xl);
+            gap: 32px;
         }
 
         .nav-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: var(--text-sm);
+            font-family: var(--mono);
+            font-size: 12px;
             font-weight: 500;
-            transition: color 0.2s ease;
-            position: relative;
+            color: var(--fog);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            transition: color 0.2s;
         }
 
         .nav-links a:hover {
-            color: var(--text-primary);
-        }
-
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 0;
-            height: 1px;
-            background: var(--accent);
-            transition: width 0.3s ease;
-        }
-
-        .nav-links a:hover::after {
-            width: 100%;
+            color: var(--signal);
         }
 
         .nav-cta {
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            padding: var(--space-sm) var(--space-md);
-            border-radius: 8px;
-            color: var(--text-primary) !important;
-            transition: all 0.2s ease;
+            background: transparent !important;
+            border: 1px solid var(--signal) !important;
+            color: var(--signal) !important;
+            padding: 8px 16px;
         }
 
         .nav-cta:hover {
-            background: var(--bg-hover);
-            border-color: var(--border-hover);
+            background: var(--signal) !important;
+            color: var(--black) !important;
         }
 
-        .nav-cta::after {
-            display: none !important;
-        }
-
-        /* Hero Section */
+        /* Hero */
         .hero {
-            padding: 180px 0 var(--space-3xl);
-            position: relative;
             min-height: 100vh;
             display: flex;
             align-items: center;
+            padding: 120px 0 80px;
+            position: relative;
         }
 
+        /* Broadcast grid background */
         .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 1400px;
-            height: 700px;
-            background:
-                radial-gradient(ellipse 60% 50% at 50% 0%, var(--accent-glow) 0%, transparent 60%),
-                radial-gradient(ellipse 40% 30% at 30% 20%, var(--violet-muted) 0%, transparent 50%);
-            pointer-events: none;
-            opacity: 0.7;
-        }
-
-        .hero-content {
-            position: relative;
-            text-align: center;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--space-sm);
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 100px;
-            padding: 6px 14px 6px 8px;
-            font-size: var(--text-xs);
-            font-weight: 500;
-            color: var(--text-secondary);
-            margin-bottom: var(--space-xl);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .hero-badge .status {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(74, 222, 128, 0.1);
-            padding: 4px 8px;
-            border-radius: 100px;
-            color: var(--success);
-        }
-
-        .hero-badge .status::before {
-            content: '';
-            width: 6px;
-            height: 6px;
-            background: var(--success);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(0.95); }
-        }
-
-        h1 {
-            font-size: clamp(var(--text-4xl), 7vw, var(--text-5xl));
-            font-weight: 700;
-            line-height: 1.05;
-            letter-spacing: -0.03em;
-            margin-bottom: var(--space-lg);
-        }
-
-        h1 .gradient {
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 50%, var(--violet) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-description {
-            font-size: var(--text-lg);
-            color: var(--text-secondary);
-            max-width: 580px;
-            margin: 0 auto var(--space-xl);
-            line-height: 1.7;
-        }
-
-        /* Buttons */
-        .btn-group {
-            display: flex;
-            gap: var(--space-md);
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: var(--space-2xl);
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--space-sm);
-            padding: 14px 28px;
-            border-radius: 10px;
-            font-size: var(--text-base);
-            font-weight: 600;
-            font-family: inherit;
-            text-decoration: none;
-            transition: all 0.25s ease;
-            cursor: pointer;
-            border: none;
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            color: white;
-            box-shadow:
-                0 0 0 1px rgba(255, 107, 74, 0.3),
-                0 4px 20px var(--accent-glow),
-                inset 0 1px 0 rgba(255, 255, 255, 0.15);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow:
-                0 0 0 1px rgba(255, 107, 74, 0.4),
-                0 8px 30px var(--accent-glow),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-secondary {
-            background: var(--bg-elevated);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-secondary:hover {
-            background: var(--bg-hover);
-            border-color: var(--border-hover);
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary svg {
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-
-        .btn-secondary:hover svg {
-            opacity: 1;
-        }
-
-        /* Pipeline Visual */
-        .pipeline {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: var(--space-lg);
-            max-width: 1000px;
-            margin: 0 auto var(--space-2xl);
-            overflow-x: auto;
-        }
-
-        .pipeline-flow {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--space-sm);
-            min-width: max-content;
-        }
-
-        .pipeline-step {
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-            background: var(--bg-elevated);
-            padding: 10px 16px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            font-size: var(--text-sm);
-            font-weight: 500;
-            white-space: nowrap;
-            transition: all 0.2s ease;
-        }
-
-        .pipeline-step:hover {
-            border-color: var(--accent);
-            transform: translateY(-2px);
-        }
-
-        .pipeline-step svg {
-            width: 16px;
-            height: 16px;
-            color: var(--accent);
-        }
-
-        .pipeline-arrow {
-            color: var(--text-muted);
-            font-size: var(--text-lg);
-            flex-shrink: 0;
-        }
-
-        /* Demo Video */
-        .demo-wrapper {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .demo-label {
-            text-align: center;
-            font-size: var(--text-sm);
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: var(--space-md);
-        }
-
-        .demo-video {
-            position: relative;
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            box-shadow:
-                0 0 0 1px rgba(255, 255, 255, 0.03),
-                0 40px 80px -20px rgba(0, 0, 0, 0.5),
-                0 20px 40px -10px rgba(255, 107, 74, 0.1);
-        }
-
-        .demo-video::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 16px;
-            padding: 1px;
-            background: linear-gradient(135deg, var(--accent-glow) 0%, transparent 50%, var(--violet-muted) 100%);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            pointer-events: none;
-        }
-
-        .demo-video iframe {
-            width: 100%;
-            aspect-ratio: 16/9;
-            display: block;
-        }
-
-        .demo-caption {
-            text-align: center;
-            margin-top: var(--space-md);
-            font-size: var(--text-sm);
-            color: var(--text-muted);
-        }
-
-        /* Features Section */
-        .features {
-            padding: var(--space-3xl) 0;
-            position: relative;
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: var(--space-2xl);
-        }
-
-        .section-eyebrow {
-            font-size: var(--text-xs);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--accent);
-            margin-bottom: var(--space-md);
-        }
-
-        .section-title {
-            font-size: var(--text-3xl);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: var(--space-md);
-        }
-
-        .section-description {
-            font-size: var(--text-lg);
-            color: var(--text-secondary);
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--space-lg);
-        }
-
-        .feature-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: var(--space-xl);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .feature-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--accent-muted), transparent);
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            bottom: 0;
+            background-image:
+                linear-gradient(var(--ash) 1px, transparent 1px),
+                linear-gradient(90deg, var(--ash) 1px, transparent 1px);
+            background-size: 60px 60px;
+            opacity: 0.3;
+            mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 0%, transparent 70%);
         }
 
-        .feature-card:hover {
-            border-color: var(--border-hover);
-            transform: translateY(-4px);
-            background: var(--bg-elevated);
+        .hero-content {
+            position: relative;
+            z-index: 1;
         }
 
-        .feature-card:hover::before {
-            opacity: 1;
+        /* Broadcast status bar */
+        .status-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            background: var(--charcoal);
+            border: 1px solid var(--ash);
+            padding: 8px 16px;
+            margin-bottom: 40px;
+            font-family: var(--mono);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
-        .feature-icon {
-            width: 44px;
-            height: 44px;
-            background: var(--bg-hover);
-            border: 1px solid var(--border);
-            border-radius: 12px;
+        .status-bar .rec {
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin-bottom: var(--space-lg);
-            transition: all 0.3s ease;
+            gap: 6px;
+            color: var(--error);
         }
 
-        .feature-card:hover .feature-icon {
-            background: var(--accent-muted);
-            border-color: var(--accent);
+        .status-bar .rec::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--error);
+            border-radius: 50%;
+            animation: pulse-rec 1s infinite;
         }
 
-        .feature-icon svg {
-            width: 22px;
-            height: 22px;
-            color: var(--text-secondary);
-            transition: color 0.3s ease;
+        @keyframes pulse-rec {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
-        .feature-card:hover .feature-icon svg {
-            color: var(--accent);
+        .status-bar .divider {
+            width: 1px;
+            height: 16px;
+            background: var(--ash);
         }
 
-        .feature-card h3 {
-            font-size: var(--text-lg);
+        .status-bar .label {
+            color: var(--fog);
+        }
+
+        h1 {
+            font-family: var(--sans);
+            font-size: clamp(48px, 8vw, 96px);
+            font-weight: 800;
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+            margin-bottom: 32px;
+        }
+
+        h1 .line {
+            display: block;
+        }
+
+        h1 .accent {
+            color: var(--signal);
+            position: relative;
+        }
+
+        h1 .accent::after {
+            content: '_';
+            animation: cursor 1s step-end infinite;
+        }
+
+        @keyframes cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .hero-description {
+            font-size: 18px;
+            color: var(--silver);
+            max-width: 540px;
+            margin-bottom: 48px;
+            line-height: 1.7;
+        }
+
+        .hero-description strong {
+            color: var(--white);
+            font-weight: 500;
+        }
+
+        /* Buttons */
+        .btn-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 64px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 32px;
+            font-family: var(--mono);
+            font-size: 13px;
             font-weight: 600;
-            letter-spacing: -0.01em;
-            margin-bottom: var(--space-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .feature-card p {
-            color: var(--text-secondary);
-            font-size: var(--text-sm);
+        .btn-primary {
+            background: var(--signal);
+            color: var(--black);
+        }
+
+        .btn-primary:hover {
+            background: var(--white);
+            box-shadow: 0 0 30px var(--signal-glow);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--white);
+            border: 1px solid var(--smoke);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--white);
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Pipeline display - like a broadcast routing diagram */
+        .pipeline-display {
+            background: var(--charcoal);
+            border: 1px solid var(--ash);
+            padding: 24px;
+            margin-bottom: 64px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pipeline-display::before {
+            content: 'SIGNAL FLOW';
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            font-family: var(--mono);
+            font-size: 9px;
+            color: var(--fog);
+            letter-spacing: 0.15em;
+        }
+
+        .pipeline-flow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-top: 16px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .pipeline-flow::-webkit-scrollbar {
+            display: none;
+        }
+
+        .pipeline-node {
+            flex-shrink: 0;
+            background: var(--steel);
+            border: 1px solid var(--ash);
+            padding: 12px 20px;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .pipeline-node:hover {
+            border-color: var(--signal);
+            color: var(--signal);
+        }
+
+        .pipeline-arrow {
+            color: var(--signal);
+            font-size: 18px;
+            flex-shrink: 0;
+            opacity: 0.6;
+        }
+
+        /* Video monitor frame */
+        .monitor {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .monitor-frame {
+            background: var(--charcoal);
+            border: 2px solid var(--ash);
+            padding: 16px 16px 8px;
+            position: relative;
+        }
+
+        .monitor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--ash);
+        }
+
+        .monitor-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--fog);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .monitor-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--signal);
+        }
+
+        .monitor-status::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: var(--signal);
+            border-radius: 50%;
+        }
+
+        .monitor-screen {
+            position: relative;
+            background: var(--black);
+            overflow: hidden;
+        }
+
+        .monitor-screen iframe {
+            width: 100%;
+            aspect-ratio: 16/9;
+            display: block;
+            border: none;
+        }
+
+        /* VHS tracking effect on video */
+        .monitor-screen::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                transparent 0%,
+                rgba(0, 255, 136, 0.02) 50%,
+                transparent 100%
+            );
+            pointer-events: none;
+            animation: tracking 8s linear infinite;
+        }
+
+        @keyframes tracking {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .monitor-footer {
+            display: flex;
+            justify-content: space-between;
+            padding-top: 8px;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--fog);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Features section */
+        .features {
+            padding: 120px 0;
+            position: relative;
+        }
+
+        .section-header {
+            margin-bottom: 64px;
+        }
+
+        .section-tag {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--signal);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: clamp(32px, 5vw, 48px);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+
+        .section-desc {
+            font-size: 16px;
+            color: var(--silver);
+            max-width: 480px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: var(--ash);
+            border: 1px solid var(--ash);
+        }
+
+        .feature-cell {
+            background: var(--charcoal);
+            padding: 40px 32px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .feature-cell:hover {
+            background: var(--steel);
+        }
+
+        .feature-cell::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 0;
+            background: var(--signal);
+            transition: height 0.3s;
+        }
+
+        .feature-cell:hover::before {
+            height: 100%;
+        }
+
+        .feature-num {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--fog);
+            margin-bottom: 20px;
+        }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            letter-spacing: -0.01em;
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            color: var(--silver);
             line-height: 1.6;
         }
 
-        /* Visual Break - Wow Banner */
+        /* Visual break with the wow image */
         .visual-break {
             position: relative;
-            height: 50vh;
+            height: 60vh;
             min-height: 400px;
-            max-height: 500px;
             overflow: hidden;
-            margin: var(--space-2xl) 0;
         }
 
         .visual-break-bg {
@@ -598,337 +618,302 @@
             position: absolute;
             inset: 0;
             background:
-                linear-gradient(to bottom, var(--bg-void) 0%, transparent 15%, transparent 85%, var(--bg-void) 100%),
-                linear-gradient(to right, var(--bg-void) 0%, transparent 30%, transparent 70%, var(--bg-void) 100%),
-                linear-gradient(180deg, rgba(255, 107, 74, 0.05) 0%, transparent 50%);
+                linear-gradient(to bottom, var(--black) 0%, transparent 20%, transparent 80%, var(--black) 100%),
+                linear-gradient(to right, var(--black) 0%, transparent 30%, transparent 70%, var(--black) 100%);
+        }
+
+        /* Glitch scanlines on visual break */
+        .visual-break::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.1) 2px,
+                rgba(0, 0, 0, 0.1) 4px
+            );
+            z-index: 2;
+            pointer-events: none;
         }
 
         .visual-break-content {
             position: relative;
-            z-index: 1;
+            z-index: 3;
             height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
-            padding: var(--space-xl);
         }
 
         .visual-break h2 {
-            font-size: clamp(var(--text-2xl), 5vw, var(--text-4xl));
-            font-weight: 700;
+            font-size: clamp(36px, 6vw, 64px);
+            font-weight: 800;
             letter-spacing: -0.02em;
-            margin-bottom: var(--space-md);
-            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+            margin-bottom: 16px;
         }
 
         .visual-break h2 span {
-            color: var(--accent);
+            color: var(--signal);
+            font-family: var(--mono);
         }
 
         .visual-break p {
-            font-size: var(--text-lg);
-            color: var(--text-secondary);
-            max-width: 450px;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            font-size: 18px;
+            color: var(--silver);
         }
 
-        /* Installation Section */
+        /* Installation */
         .installation {
-            padding: var(--space-3xl) 0;
-            background: var(--bg-surface);
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
+            padding: 120px 0;
+            background: var(--charcoal);
+            border-top: 1px solid var(--ash);
+            border-bottom: 1px solid var(--ash);
         }
 
-        .install-card {
-            background: var(--bg-deep);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            overflow: hidden;
+        .terminal-window {
+            background: var(--black);
+            border: 1px solid var(--ash);
             max-width: 800px;
-            margin: 0 auto var(--space-xl);
+            margin: 0 auto 48px;
+            overflow: hidden;
         }
 
-        .install-header {
-            background: var(--bg-elevated);
-            padding: var(--space-md) var(--space-lg);
-            border-bottom: 1px solid var(--border);
+        .terminal-header {
+            background: var(--steel);
+            padding: 12px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        .install-header-left {
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
+            border-bottom: 1px solid var(--ash);
         }
 
         .terminal-dots {
             display: flex;
-            gap: 6px;
+            gap: 8px;
         }
 
         .terminal-dots span {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            background: var(--bg-hover);
         }
 
         .terminal-dots span:nth-child(1) { background: #ff5f57; }
-        .terminal-dots span:nth-child(2) { background: #febc2e; }
-        .terminal-dots span:nth-child(3) { background: #28c840; }
+        .terminal-dots span:nth-child(2) { background: #ffbd2e; }
+        .terminal-dots span:nth-child(3) { background: #28ca41; }
 
-        .install-header h3 {
-            font-size: var(--text-sm);
-            font-weight: 500;
-            color: var(--text-secondary);
+        .terminal-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--fog);
         }
 
         .copy-btn {
-            background: var(--bg-hover);
-            border: 1px solid var(--border);
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: var(--text-xs);
-            font-weight: 500;
-            font-family: inherit;
-            color: var(--text-secondary);
+            background: transparent;
+            border: 1px solid var(--smoke);
+            color: var(--fog);
+            font-family: var(--mono);
+            font-size: 10px;
+            padding: 6px 12px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 0.2s;
         }
 
         .copy-btn:hover {
-            background: var(--bg-surface);
-            color: var(--text-primary);
-            border-color: var(--border-hover);
+            border-color: var(--signal);
+            color: var(--signal);
         }
 
         .copy-btn.copied {
-            background: rgba(74, 222, 128, 0.1);
-            color: var(--success);
-            border-color: var(--success);
+            background: var(--signal);
+            border-color: var(--signal);
+            color: var(--black);
         }
 
-        .copy-btn svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        .install-code {
-            padding: var(--space-lg);
+        .terminal-body {
+            padding: 24px;
             overflow-x: auto;
         }
 
-        pre {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: var(--text-sm);
+        .terminal-body pre {
+            font-family: var(--mono);
+            font-size: 13px;
             line-height: 1.8;
-            color: var(--text-primary);
+            color: var(--chalk);
             margin: 0;
         }
 
-        .comment { color: var(--text-muted); }
-        .command { color: var(--accent); }
-        .env-var { color: var(--violet); }
-        .string { color: #4ade80; }
+        .terminal-body .comment { color: var(--fog); }
+        .terminal-body .cmd { color: var(--signal); }
+        .terminal-body .str { color: var(--warning); }
+        .terminal-body .var { color: #ff79c6; }
 
         /* API Keys */
-        .api-keys {
+        .api-section {
             max-width: 800px;
             margin: 0 auto;
         }
 
-        .api-keys h3 {
-            font-size: var(--text-lg);
-            font-weight: 600;
-            margin-bottom: var(--space-lg);
+        .api-section h3 {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--signal);
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 24px;
             display: flex;
             align-items: center;
-            gap: var(--space-sm);
+            gap: 12px;
         }
 
-        .api-key-list {
+        .api-section h3::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--ash);
+        }
+
+        .api-list {
             display: flex;
             flex-direction: column;
-            gap: var(--space-md);
+            gap: 12px;
         }
 
-        .api-key-item {
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: var(--space-lg);
+        .api-item {
             display: flex;
             align-items: flex-start;
-            gap: var(--space-md);
-            transition: all 0.2s ease;
+            gap: 16px;
+            padding: 20px;
+            background: var(--steel);
+            border: 1px solid var(--ash);
+            transition: all 0.2s;
         }
 
-        .api-key-item:hover {
-            border-color: var(--border-hover);
+        .api-item:hover {
+            border-color: var(--smoke);
         }
 
-        .api-key-item.required .api-key-badge {
-            background: var(--accent-muted);
-            color: var(--accent);
-        }
-
-        .api-key-item.optional .api-key-badge {
-            background: var(--bg-hover);
-            color: var(--text-muted);
-        }
-
-        .api-key-badge {
-            font-size: var(--text-xs);
+        .api-badge {
+            font-family: var(--mono);
+            font-size: 9px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 4px 10px;
-            border-radius: 4px;
-            white-space: nowrap;
+            letter-spacing: 0.1em;
+            padding: 4px 8px;
+            flex-shrink: 0;
         }
 
-        .api-key-content {
+        .api-badge.req {
+            background: var(--signal-dim);
+            color: var(--signal);
+        }
+
+        .api-badge.opt {
+            background: var(--ash);
+            color: var(--fog);
+        }
+
+        .api-info {
             flex: 1;
         }
 
-        .api-key-content strong {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: var(--text-sm);
-            color: var(--text-primary);
+        .api-info strong {
+            display: block;
+            font-family: var(--mono);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
         }
 
-        .api-key-content p {
-            font-size: var(--text-sm);
-            color: var(--text-secondary);
-            margin-top: 4px;
+        .api-info p {
+            font-size: 13px;
+            color: var(--silver);
         }
 
-        .api-key-content a {
-            color: var(--accent);
+        .api-info a {
+            color: var(--signal);
             text-decoration: none;
-            transition: opacity 0.2s;
         }
 
-        .api-key-content a:hover {
-            opacity: 0.8;
+        .api-info a:hover {
+            text-decoration: underline;
         }
 
-        /* Quick Start Section */
+        /* Quick Start */
         .quickstart {
-            padding: var(--space-3xl) 0;
+            padding: 120px 0;
         }
 
-        .quickstart-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: var(--space-2xl);
-            max-width: 800px;
+        .steps-container {
+            max-width: 720px;
             margin: 0 auto;
-        }
-
-        .quickstart-card h3 {
-            font-size: var(--text-2xl);
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: var(--space-xl);
-            display: flex;
-            align-items: center;
-            gap: var(--space-md);
-        }
-
-        .quickstart-card h3 svg {
-            width: 28px;
-            height: 28px;
-            color: var(--accent);
-        }
-
-        .steps {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-xl);
         }
 
         .step {
             display: flex;
-            gap: var(--space-lg);
-            position: relative;
+            gap: 24px;
+            padding: 32px 0;
+            border-bottom: 1px solid var(--ash);
         }
 
-        .step:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            left: 18px;
-            top: 44px;
-            bottom: -20px;
-            width: 1px;
-            background: var(--border);
+        .step:last-child {
+            border-bottom: none;
         }
 
-        .step-number {
-            width: 38px;
-            height: 38px;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 50%;
+        .step-num {
+            width: 48px;
+            height: 48px;
+            background: var(--charcoal);
+            border: 2px solid var(--ash);
             display: flex;
             align-items: center;
             justify-content: center;
+            font-family: var(--mono);
+            font-size: 16px;
             font-weight: 700;
-            font-size: var(--text-sm);
             flex-shrink: 0;
-            position: relative;
-            z-index: 1;
-            transition: all 0.3s ease;
+            transition: all 0.3s;
         }
 
-        .step:hover .step-number {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: white;
-        }
-
-        .step-content {
-            flex: 1;
-            padding-top: 4px;
+        .step:hover .step-num {
+            background: var(--signal);
+            border-color: var(--signal);
+            color: var(--black);
         }
 
         .step-content h4 {
-            font-size: var(--text-base);
+            font-size: 18px;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .step-content p {
-            color: var(--text-secondary);
-            font-size: var(--text-sm);
-            margin-bottom: var(--space-md);
+            font-size: 14px;
+            color: var(--silver);
+            margin-bottom: 16px;
         }
 
         .step-content code {
             display: block;
-            background: var(--bg-deep);
-            border: 1px solid var(--border);
-            padding: var(--space-md);
-            border-radius: 10px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: var(--text-sm);
-            color: var(--accent);
+            background: var(--charcoal);
+            border: 1px solid var(--ash);
+            padding: 16px;
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--signal);
             overflow-x: auto;
         }
 
         /* Footer */
         footer {
-            padding: var(--space-2xl) 0;
-            border-top: 1px solid var(--border);
+            padding: 48px 0;
+            border-top: 1px solid var(--ash);
         }
 
         .footer-content {
@@ -936,46 +921,37 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: var(--space-lg);
+            gap: 24px;
         }
 
         .footer-links {
             display: flex;
-            gap: var(--space-xl);
+            gap: 32px;
         }
 
         .footer-links a {
-            color: var(--text-secondary);
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--fog);
             text-decoration: none;
-            font-size: var(--text-sm);
-            transition: color 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: color 0.2s;
         }
 
         .footer-links a:hover {
-            color: var(--text-primary);
-        }
-
-        .footer-links a svg {
-            width: 16px;
-            height: 16px;
+            color: var(--signal);
         }
 
         .footer-credit {
-            color: var(--text-muted);
-            font-size: var(--text-sm);
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--smoke);
         }
 
         .footer-credit a {
-            color: var(--accent);
+            color: var(--signal);
             text-decoration: none;
-            transition: opacity 0.2s;
-        }
-
-        .footer-credit a:hover {
-            opacity: 0.8;
         }
 
         /* Responsive */
@@ -986,31 +962,21 @@
         }
 
         @media (max-width: 768px) {
-            .nav-links {
+            .nav-links a:not(.nav-cta) {
                 display: none;
             }
 
             .hero {
-                padding: 140px 0 var(--space-2xl);
-                min-height: auto;
+                padding: 100px 0 60px;
             }
 
             .pipeline-flow {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .pipeline-arrow {
-                transform: rotate(90deg);
-                text-align: center;
+                flex-wrap: wrap;
+                justify-content: center;
             }
 
             .features-grid {
                 grid-template-columns: 1fr;
-            }
-
-            .quickstart-card {
-                padding: var(--space-lg);
             }
 
             .footer-content {
@@ -1024,363 +990,252 @@
         }
 
         @media (max-width: 480px) {
-            .btn-group {
+            .btn-row {
                 flex-direction: column;
-                align-items: stretch;
             }
 
             .btn {
+                width: 100%;
                 justify-content: center;
             }
 
             .step {
                 flex-direction: column;
-                gap: var(--space-md);
-            }
-
-            .step::after {
-                display: none;
+                gap: 16px;
             }
         }
 
-        /* Hebrew RTL support */
+        /* RTL Support */
         [dir="rtl"] {
-            font-family: 'Heebo', 'Space Grotesk', sans-serif;
+            font-family: 'Heebo', var(--sans);
         }
 
-        /* Smooth reveal animation */
+        /* Entrance animations */
         @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .hero-content > * {
-            animation: fadeUp 0.6s ease forwards;
+            opacity: 0;
+            animation: fadeUp 0.8s ease forwards;
         }
 
-        .hero-badge { animation-delay: 0.1s; opacity: 0; }
-        h1 { animation-delay: 0.2s; opacity: 0; }
-        .hero-description { animation-delay: 0.3s; opacity: 0; }
-        .btn-group { animation-delay: 0.4s; opacity: 0; }
-        .pipeline { animation-delay: 0.5s; opacity: 0; }
-        .demo-wrapper { animation-delay: 0.6s; opacity: 0; }
+        .status-bar { animation-delay: 0.1s; }
+        h1 { animation-delay: 0.2s; }
+        .hero-description { animation-delay: 0.3s; }
+        .btn-row { animation-delay: 0.4s; }
+        .pipeline-display { animation-delay: 0.5s; }
+        .monitor { animation-delay: 0.6s; }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav id="nav">
+    <!-- Top Bar -->
+    <nav class="top-bar" id="nav">
         <div class="container">
             <a href="#" class="logo">
-                <div class="logo-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="23 7 16 12 23 17 23 7"/>
-                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                    </svg>
-                </div>
-                AI Music Video Maker
+                <div class="logo-mark">MV</div>
+                <span class="logo-text">Music Video Maker</span>
             </a>
             <div class="nav-links">
                 <a href="#features">Features</a>
-                <a href="#installation">Installation</a>
+                <a href="#installation">Install</a>
                 <a href="#quickstart">Quick Start</a>
-                <a href="https://github.com/aviz85/ai-music-video-maker" target="_blank" class="nav-cta">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px;">
-                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-                    </svg>
-                    GitHub
-                </a>
+                <a href="https://github.com/aviz85/ai-music-video-maker" target="_blank" class="nav-cta">GitHub</a>
             </div>
         </div>
     </nav>
 
-    <!-- Hero Section -->
+    <!-- Hero -->
     <section class="hero">
         <div class="container">
             <div class="hero-content">
-                <div class="hero-badge">
-                    <span class="status">Active</span>
-                    Claude Code Skill
+                <div class="status-bar">
+                    <span class="rec">REC</span>
+                    <span class="divider"></span>
+                    <span class="label">Claude Code Skill</span>
+                    <span class="divider"></span>
+                    <span class="label">v1.0</span>
                 </div>
+
                 <h1>
-                    Transform Audio into<br>
-                    <span class="gradient">Cinematic Music Videos</span>
+                    <span class="line">Audio In.</span>
+                    <span class="line"><span class="accent">Music Video</span> Out.</span>
                 </h1>
+
                 <p class="hero-description">
-                    Generate professional multi-camera music videos from any audio file.
-                    AI-powered analysis, 9 camera angles, perfect lyrics sync.
+                    Generate <strong>multi-camera music videos</strong> from any audio file.
+                    AI-powered analysis, <strong>9 camera angles</strong>, frame-accurate lyrics sync.
                 </p>
 
-                <div class="btn-group">
+                <div class="btn-row">
                     <a href="#installation" class="btn btn-primary">
                         Get Started
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
                     </a>
                     <a href="https://github.com/aviz85/ai-music-video-maker" target="_blank" class="btn btn-secondary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
                         </svg>
-                        View on GitHub
+                        View Source
                     </a>
                 </div>
 
-                <!-- Pipeline Visual -->
-                <div class="pipeline">
+                <div class="pipeline-display">
                     <div class="pipeline-flow">
-                        <div class="pipeline-step">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M9 18V5l12-2v13"/>
-                                <circle cx="6" cy="18" r="3"/>
-                                <circle cx="18" cy="16" r="3"/>
-                            </svg>
-                            Audio Input
-                        </div>
+                        <div class="pipeline-node">Audio Input</div>
                         <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                <line x1="12" y1="19" x2="12" y2="22"/>
-                            </svg>
-                            ElevenLabs + Gemini
-                        </div>
+                        <div class="pipeline-node">ElevenLabs</div>
                         <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <path d="M3 9h18"/>
-                                <path d="M9 21V9"/>
-                            </svg>
-                            Storyboard
-                        </div>
+                        <div class="pipeline-node">Gemini Analysis</div>
                         <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="2" y="2" width="20" height="20" rx="2.18"/>
-                                <line x1="7" y1="2" x2="7" y2="22"/>
-                                <line x1="17" y1="2" x2="17" y2="22"/>
-                                <line x1="2" y1="12" x2="22" y2="12"/>
-                            </svg>
-                            4K Collage
-                        </div>
+                        <div class="pipeline-node">4K Collage</div>
                         <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="23 7 16 12 23 17 23 7"/>
-                                <rect x="1" y="5" width="15" height="14" rx="2"/>
-                            </svg>
-                            LTX Video
-                        </div>
+                        <div class="pipeline-node">LTX Video</div>
                         <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                                <path d="M2 17l10 5 10-5"/>
-                                <path d="M2 12l10 5 10-5"/>
-                            </svg>
-                            Final Output
-                        </div>
+                        <div class="pipeline-node">Final Output</div>
                     </div>
                 </div>
 
-                <!-- Demo Video -->
-                <div class="demo-wrapper">
-                    <p class="demo-label">See it in action</p>
-                    <div class="demo-video">
-                        <iframe
-                            src="https://www.youtube.com/embed/1dJDWfkGC9A"
-                            title="AI Music Video Maker Demo"
-                            frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowfullscreen>
-                        </iframe>
+                <div class="monitor">
+                    <div class="monitor-frame">
+                        <div class="monitor-header">
+                            <span class="monitor-label">Preview Monitor</span>
+                            <span class="monitor-status">Live</span>
+                        </div>
+                        <div class="monitor-screen">
+                            <iframe
+                                src="https://www.youtube.com/embed/1dJDWfkGC9A"
+                                title="AI Music Video Demo"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen>
+                            </iframe>
+                        </div>
+                        <div class="monitor-footer">
+                            <span>16:9 • 1080p</span>
+                            <span>Karaoke Overlay Enabled</span>
+                        </div>
                     </div>
-                    <p class="demo-caption">AI-generated music video with karaoke-style lyrics overlay</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Features Section -->
+    <!-- Features -->
     <section id="features" class="features">
         <div class="container">
             <div class="section-header">
-                <p class="section-eyebrow">Capabilities</p>
-                <h2 class="section-title">Built for creators</h2>
-                <p class="section-description">
-                    Everything you need to turn audio into professional music videos.
-                </p>
+                <div class="section-tag">// Capabilities</div>
+                <h2 class="section-title">Everything in one pipeline</h2>
+                <p class="section-desc">From raw audio to professional music video. No manual editing required.</p>
             </div>
 
             <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                            <line x1="12" y1="19" x2="12" y2="22"/>
-                        </svg>
-                    </div>
-                    <h3>Word-Level Timing</h3>
-                    <p>ElevenLabs provides precise word-by-word timestamps for perfect lyrics synchronization. Used as ground truth for all timing alignment.</p>
+                <div class="feature-cell">
+                    <div class="feature-num">01</div>
+                    <h3 class="feature-title">Word-Level Timing</h3>
+                    <p class="feature-desc">ElevenLabs provides precise word-by-word timestamps. Ground truth for all alignment.</p>
                 </div>
-
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 16v-4"/>
-                            <path d="M12 8h.01"/>
-                            <path d="M8 12h.01"/>
-                            <path d="M16 12h.01"/>
-                            <path d="M12 8a2.5 2.5 0 0 1 0 8"/>
-                        </svg>
-                    </div>
-                    <h3>Gemini Audio Analysis</h3>
-                    <p>AI-powered deep listening identifies vocals, instrument highlights, musical structure, and optimal video segments.</p>
+                <div class="feature-cell">
+                    <div class="feature-num">02</div>
+                    <h3 class="feature-title">Gemini Audio Analysis</h3>
+                    <p class="feature-desc">AI identifies vocals, instruments, musical structure, and optimal segments.</p>
                 </div>
-
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="2" width="20" height="20" rx="2.18"/>
-                            <line x1="7" y1="2" x2="7" y2="22"/>
-                            <line x1="17" y1="2" x2="17" y2="22"/>
-                            <line x1="2" y1="12" x2="22" y2="12"/>
-                        </svg>
-                    </div>
-                    <h3>9 Camera Angles</h3>
-                    <p>Single 4K collage generates 9 unique camera angles: wide stage, singer closeup, instruments, crowd, and more.</p>
+                <div class="feature-cell">
+                    <div class="feature-num">03</div>
+                    <h3 class="feature-title">9 Camera Angles</h3>
+                    <p class="feature-desc">Single 4K collage generates 9 unique angles: stage, closeups, crowd, silhouettes.</p>
                 </div>
-
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="23 7 16 12 23 17 23 7"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                        </svg>
-                    </div>
-                    <h3>LTX Video Generation</h3>
-                    <p>State-of-the-art AI video generation using fal.ai LTX-2 for realistic, audio-synced video clips.</p>
+                <div class="feature-cell">
+                    <div class="feature-num">04</div>
+                    <h3 class="feature-title">LTX Video Generation</h3>
+                    <p class="feature-desc">State-of-the-art AI video via fal.ai LTX-2. Audio-synced, realistic motion.</p>
                 </div>
-
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                            <path d="m15 5 4 4"/>
-                        </svg>
-                    </div>
-                    <h3>Lyrics Overlay</h3>
-                    <p>Animated lyrics with multiple styles: karaoke highlighting, fade-in effects, and minimal mode. Full RTL language support.</p>
+                <div class="feature-cell">
+                    <div class="feature-num">05</div>
+                    <h3 class="feature-title">Lyrics Overlay</h3>
+                    <p class="feature-desc">Animated lyrics: karaoke, fade-in, minimal modes. Full RTL language support.</p>
                 </div>
-
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                        </svg>
-                    </div>
-                    <h3>Smart Shot Selection</h3>
-                    <p>Audio-driven shot selection: vocals show the singer, guitar solo shows the guitarist. What you hear is what you see.</p>
+                <div class="feature-cell">
+                    <div class="feature-num">06</div>
+                    <h3 class="feature-title">Smart Shot Selection</h3>
+                    <p class="feature-desc">Audio-driven cuts. Vocals show singer. Guitar solo shows guitarist.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Visual Break Banner -->
+    <!-- Visual Break -->
     <section class="visual-break">
         <div class="visual-break-bg"></div>
         <div class="visual-break-overlay"></div>
         <div class="visual-break-content">
-            <h2><span>9</span> Camera Angles. One Vision.</h2>
-            <p>From a single AI-generated collage to a multi-camera concert experience.</p>
+            <h2><span>9</span> Angles. One Vision.</h2>
+            <p>Multi-camera concert experience from a single AI generation.</p>
         </div>
     </section>
 
-    <!-- Installation Section -->
+    <!-- Installation -->
     <section id="installation" class="installation">
         <div class="container">
             <div class="section-header">
-                <p class="section-eyebrow">Setup</p>
+                <div class="section-tag">// Setup</div>
                 <h2 class="section-title">Installation</h2>
-                <p class="section-description">
-                    Install the skill for Claude Code in a few simple steps.
-                </p>
+                <p class="section-desc">Clone, install, configure. Ready in 2 minutes.</p>
             </div>
 
-            <div class="install-card">
-                <div class="install-header">
-                    <div class="install-header-left">
-                        <div class="terminal-dots">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </div>
-                        <h3>Terminal</h3>
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <div class="terminal-dots">
+                        <span></span><span></span><span></span>
                     </div>
-                    <button class="copy-btn" onclick="copyInstall()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                        </svg>
-                        <span>Copy</span>
-                    </button>
+                    <span class="terminal-title">terminal</span>
+                    <button class="copy-btn" onclick="copyCode()">Copy</button>
                 </div>
-                <div class="install-code">
+                <div class="terminal-body">
                     <pre id="install-code"><span class="comment"># Clone the repository</span>
-<span class="command">git clone</span> https://github.com/aviz85/ai-music-video-maker.git
-<span class="command">cd</span> ai-music-video-maker
+<span class="cmd">git clone</span> https://github.com/aviz85/ai-music-video-maker.git
+<span class="cmd">cd</span> ai-music-video-maker
 
 <span class="comment"># Install dependencies</span>
-<span class="command">cd</span> .claude/skills/audio-to-video/scripts
-<span class="command">npm install</span>
+<span class="cmd">cd</span> .claude/skills/audio-to-video/scripts
+<span class="cmd">npm install</span>
 
 <span class="comment"># Return to project root</span>
-<span class="command">cd</span> ../../../..
+<span class="cmd">cd</span> ../../../..
 
-<span class="comment"># Create .env with your API keys</span>
-<span class="command">cat</span> > .claude/skills/audio-to-video/scripts/.env << EOF
-<span class="env-var">FAL_KEY</span>=<span class="string">your_fal_ai_key_here</span>
-<span class="env-var">GEMINI_API_KEY</span>=<span class="string">your_gemini_key_here</span>
+<span class="comment"># Configure API keys</span>
+<span class="cmd">cat</span> > .claude/skills/audio-to-video/scripts/.env << EOF
+<span class="var">FAL_KEY</span>=<span class="str">your_fal_ai_key</span>
+<span class="var">GEMINI_API_KEY</span>=<span class="str">your_gemini_key</span>
 EOF</pre>
                 </div>
             </div>
 
-            <div class="api-keys">
-                <h3>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-                    </svg>
-                    API Keys Required
-                </h3>
-                <div class="api-key-list">
-                    <div class="api-key-item required">
-                        <span class="api-key-badge">Required</span>
-                        <div class="api-key-content">
+            <div class="api-section">
+                <h3>API Keys</h3>
+                <div class="api-list">
+                    <div class="api-item">
+                        <span class="api-badge req">Required</span>
+                        <div class="api-info">
                             <strong>GEMINI_API_KEY</strong>
-                            <p>For audio analysis and storyboard generation. <a href="https://aistudio.google.com/app/apikey" target="_blank">Get from Google AI Studio →</a></p>
+                            <p>Audio analysis & storyboard. <a href="https://aistudio.google.com/app/apikey" target="_blank">Get from Google AI Studio →</a></p>
                         </div>
                     </div>
-                    <div class="api-key-item required">
-                        <span class="api-key-badge">Required</span>
-                        <div class="api-key-content">
+                    <div class="api-item">
+                        <span class="api-badge req">Required</span>
+                        <div class="api-info">
                             <strong>FAL_KEY</strong>
-                            <p>For LTX video generation. <a href="https://fal.ai" target="_blank">Get from fal.ai →</a></p>
+                            <p>LTX video generation. <a href="https://fal.ai" target="_blank">Get from fal.ai →</a></p>
                         </div>
                     </div>
-                    <div class="api-key-item optional">
-                        <span class="api-key-badge">Optional</span>
-                        <div class="api-key-content">
+                    <div class="api-item">
+                        <span class="api-badge opt">Optional</span>
+                        <div class="api-info">
                             <strong>ELEVENLABS_API_KEY</strong>
-                            <p>For word-level transcription (lyrics). <a href="https://elevenlabs.io" target="_blank">Get from ElevenLabs →</a></p>
+                            <p>Word-level transcription for lyrics. <a href="https://elevenlabs.io" target="_blank">Get from ElevenLabs →</a></p>
                         </div>
                     </div>
                 </div>
@@ -1388,61 +1243,46 @@ EOF</pre>
         </div>
     </section>
 
-    <!-- Quick Start Section -->
+    <!-- Quick Start -->
     <section id="quickstart" class="quickstart">
         <div class="container">
             <div class="section-header">
-                <p class="section-eyebrow">Get started</p>
+                <div class="section-tag">// Usage</div>
                 <h2 class="section-title">Quick Start</h2>
-                <p class="section-description">
-                    Start creating AI music videos in minutes.
-                </p>
+                <p class="section-desc">From audio to video in four steps.</p>
             </div>
 
-            <div class="quickstart-card">
-                <h3>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="4 17 10 11 4 5"/>
-                        <line x1="12" y1="19" x2="20" y2="19"/>
-                    </svg>
-                    Usage with Claude Code
-                </h3>
-
-                <div class="steps">
-                    <div class="step">
-                        <div class="step-number">1</div>
-                        <div class="step-content">
-                            <h4>Open the project in Claude Code</h4>
-                            <p>Navigate to the ai-music-video-maker directory and start Claude Code.</p>
-                            <code>cd ai-music-video-maker && claude</code>
-                        </div>
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <h4>Open project in Claude Code</h4>
+                        <p>Navigate to the directory and start Claude.</p>
+                        <code>cd ai-music-video-maker && claude</code>
                     </div>
-
-                    <div class="step">
-                        <div class="step-number">2</div>
-                        <div class="step-content">
-                            <h4>Ask Claude to create a music video</h4>
-                            <p>Claude will orchestrate the entire pipeline automatically.</p>
-                            <code>Create a music video from /path/to/song.mp3</code>
-                        </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <h4>Request a music video</h4>
+                        <p>Claude orchestrates the entire pipeline automatically.</p>
+                        <code>Create a music video from /path/to/song.mp3</code>
                     </div>
-
-                    <div class="step">
-                        <div class="step-number">3</div>
-                        <div class="step-content">
-                            <h4>Customize as needed</h4>
-                            <p>Specify duration, style, or use "cheap mode" for faster generation.</p>
-                            <code>Create a 30-second music video from song.mp3, cheap mode, focus on chorus</code>
-                        </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <h4>Customize options</h4>
+                        <p>Specify duration, style, or use cheap mode for faster results.</p>
+                        <code>Create 30-second music video, cheap mode, focus on chorus</code>
                     </div>
-
-                    <div class="step">
-                        <div class="step-number">4</div>
-                        <div class="step-content">
-                            <h4>Add lyrics overlay</h4>
-                            <p>Request karaoke-style lyrics with word-level highlighting.</p>
-                            <code>Add lyrics overlay with karaoke style</code>
-                        </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <h4>Add lyrics overlay</h4>
+                        <p>Request karaoke-style lyrics with word-level highlighting.</p>
+                        <code>Add lyrics overlay with karaoke style</code>
                     </div>
                 </div>
             </div>
@@ -1454,62 +1294,33 @@ EOF</pre>
         <div class="container">
             <div class="footer-content">
                 <div class="footer-links">
-                    <a href="https://github.com/aviz85/ai-music-video-maker" target="_blank">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-                        </svg>
-                        Repository
-                    </a>
-                    <a href="https://github.com/aviz85/ai-music-video-maker/issues" target="_blank">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="12" y1="8" x2="12" y2="12"/>
-                            <line x1="12" y1="16" x2="12.01" y2="16"/>
-                        </svg>
-                        Report Issues
-                    </a>
-                    <a href="https://linktr.ee/aviz85" target="_blank">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                        </svg>
-                        More Projects
-                    </a>
+                    <a href="https://github.com/aviz85/ai-music-video-maker" target="_blank">Repository</a>
+                    <a href="https://github.com/aviz85/ai-music-video-maker/issues" target="_blank">Issues</a>
+                    <a href="https://linktr.ee/aviz85" target="_blank">More Projects</a>
                 </div>
                 <p class="footer-credit">
-                    Built with Claude Code Skills by <a href="https://linktr.ee/aviz85" target="_blank">Aviz</a>
+                    Built with Claude Code by <a href="https://linktr.ee/aviz85" target="_blank">Aviz</a>
                 </p>
             </div>
         </div>
     </footer>
 
     <script>
-        // Nav scroll effect
+        // Nav scroll
         const nav = document.getElementById('nav');
-        let lastScroll = 0;
-
         window.addEventListener('scroll', () => {
-            const currentScroll = window.pageYOffset;
-
-            if (currentScroll > 50) {
-                nav.classList.add('scrolled');
-            } else {
-                nav.classList.remove('scrolled');
-            }
-
-            lastScroll = currentScroll;
+            nav.classList.toggle('scrolled', window.pageYOffset > 50);
         });
 
-        // Copy install code
-        function copyInstall() {
+        // Copy code
+        function copyCode() {
             const code = document.getElementById('install-code').innerText;
             navigator.clipboard.writeText(code).then(() => {
                 const btn = document.querySelector('.copy-btn');
-                const span = btn.querySelector('span');
-                span.textContent = 'Copied!';
+                btn.textContent = 'Copied!';
                 btn.classList.add('copied');
                 setTimeout(() => {
-                    span.textContent = 'Copy';
+                    btn.textContent = 'Copy';
                     btn.classList.remove('copied');
                 }, 2000);
             });
@@ -1517,40 +1328,16 @@ EOF</pre>
 
         // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
+            anchor.addEventListener('click', function(e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
-                    const offset = 80;
-                    const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
                     window.scrollTo({
-                        top: targetPosition,
+                        top: target.offsetTop - 80,
                         behavior: 'smooth'
                     });
                 }
             });
-        });
-
-        // Intersection Observer for feature cards
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
-            });
-        }, observerOptions);
-
-        document.querySelectorAll('.feature-card').forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = `all 0.5s ease ${index * 0.1}s`;
-            observer.observe(card);
         });
     </script>
 </body>
