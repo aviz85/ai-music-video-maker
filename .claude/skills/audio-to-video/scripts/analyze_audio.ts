@@ -121,18 +121,21 @@ If making a shorter video, USE THIS SECTION:
 9. ANGLE_9: [Behind band POV details]
 
 ## Shot List
-Format: [START-END] ANGLE_X - Description | AUDIO REASON
+Format: [START-END] ANGLE_X - Description | AUDIO REASON | LYRICS: "exact lyrics heard"
 
-[0:00-0:03] ANGLE_1 - Wide establishing shot | Full band playing intro
-[0:03-0:05] ANGLE_4 - Drummer close-up | Drum fill prominent here
-[0:05-0:09] ANGLE_2 - Singer face | Vocals begin here
-[0:09-0:12] ANGLE_3 - Guitarist hands | Guitar riff takes over
+**CRITICAL: Include LYRICS field for EVERY shot where vocals are heard. Write the EXACT Hebrew/English words sung during that shot. This is essential for timing alignment.**
+
+[0:00-0:03] ANGLE_1 - Wide establishing shot | Full band playing intro | LYRICS: (instrumental)
+[0:03-0:05] ANGLE_4 - Drummer close-up | Drum fill prominent here | LYRICS: (instrumental)
+[0:05-0:09] ANGLE_2 - Singer face | Vocals begin here | LYRICS: "הכל מתחיל מכאן"
+[0:09-0:12] ANGLE_3 - Guitarist hands | Guitar riff takes over | LYRICS: (instrumental)
 ... continue for full ${audioDuration} seconds ...
 
 ## RULES
 - Total duration: ${audioDuration} seconds
 - Shot length: 2-5 seconds each
 - EVERY shot must have AUDIO REASON explaining why that angle
+- EVERY shot with vocals MUST include LYRICS field with exact words
 - Show what we HEAR - vocals = singer, guitar = guitarist, etc.
 - Cut on beat changes
 - More cuts during high energy sections`;

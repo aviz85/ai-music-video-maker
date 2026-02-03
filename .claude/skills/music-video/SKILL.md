@@ -11,9 +11,29 @@ Generate professional multi-camera music videos from audio input using AI.
 ## Pipeline Overview
 
 ```
-Audio Input → Gemini Deep Analysis → Storyboard (markdown) → 4K Collage (16:9) →
-Split 9 Frames (16:9 each) → Audio Chunks → LTX Video Generation → Merge → Final Video (16:9)
+Audio Input → [ElevenLabs Transcribe + Gemini Analysis] → Aligned Storyboard →
+4K Collage (16:9) → Split 9 Frames → Accurate Audio Chunks → LTX Video → Merge → Final (16:9)
 ```
+
+## CRITICAL: Timing Alignment
+
+**Problem:** Gemini's audio timing is often inaccurate.
+**Solution:** Use ElevenLabs transcription (word-level timing) as ground truth.
+
+### Pipeline:
+1. **ElevenLabs Transcribe** → Get word-level timing (ground truth)
+2. **Gemini Analysis** → Get musical structure, shot suggestions, LYRICS per shot
+3. **Claude Aligns** → Match Gemini's lyrics to ElevenLabs timing
+4. **Create Accurate Chunks** → Based on aligned timing
+
+### Alignment Process:
+```
+Gemini says: [1:30-1:33] ANGLE_2 - Singer | LYRICS: "וגם אני חולם"
+ElevenLabs says: "וגם" at 92.5s, "אני" at 93.1s, "חולם" at 93.8s
+Aligned timing: [1:32.5-1:34.5] (based on actual word positions)
+```
+
+**Trust order:** ElevenLabs timing > Gemini timing
 
 ## Default Format: 16:9
 
@@ -81,7 +101,18 @@ projects/
 
 ## Pipeline Steps
 
-### 1. Audio Analysis (Gemini)
+### 1a. Transcribe Audio (ElevenLabs) - GROUND TRUTH TIMING
+
+Use the global `transcribe` skill to get word-level timing:
+
+```bash
+cd ~/.claude/skills/transcribe/scripts
+npx ts-node transcribe.ts <audio.mp3> --json > transcription.json
+```
+
+Output includes word-level timestamps - these are **accurate** and should be trusted over Gemini.
+
+### 1b. Audio Analysis (Gemini)
 
 ```bash
 cd .claude/skills/audio-to-video/scripts
@@ -93,7 +124,47 @@ Gemini **listens deeply** and outputs readable markdown:
 - Identifies **instrument highlights** (guitar solos, drum fills)
 - Maps **what we HEAR to what we SHOW**
 - Recommends **best segment** for partial videos
-- Creates shot list with **AUDIO REASON** for each cut
+- Creates shot list with **AUDIO REASON** and **LYRICS** for each cut
+
+**IMPORTANT:** Gemini must output LYRICS for each shot so Claude can align with ElevenLabs.
+
+### 1c. Claude Aligns Timing (Efficient Search)
+
+**OPTIMIZATION:** Don't read the full JSON (too long). Use two-step search:
+
+#### Step 1: Quick scan with SRT (shorter)
+```bash
+# SRT is smaller - use for initial word location
+grep -n "target_word" transcription.srt
+```
+
+#### Step 2: Precise timing from JSON (targeted)
+```python
+# Only when you know the approximate position
+# Search for specific words near that timestamp
+python3 << 'EOF'
+import json
+with open('transcription_transcript.json', 'r') as f:
+    data = json.load(f)
+keywords = ['וגם', 'אני', 'חולם']  # Target words
+for w in data['words']:
+    word = w['word'].strip().replace('.', '').replace(',', '')
+    if word in keywords:
+        print(f"{w['start']:.2f}-{w['end']:.2f}: {w['word']}")
+EOF
+```
+
+#### Handling Repeated Words (Songs)
+Songs repeat lyrics. Find the **closest occurrence** to Gemini's suggested timestamp:
+- If Gemini says chorus at 0:51, search for first occurrence near that time
+- If same lyrics appear at 1:30 (2nd chorus), pick the one closest to target
+
+Claude reads both outputs and:
+1. Takes Gemini's shot suggestions (angles, descriptions, lyrics)
+2. Quick-scans SRT to find approximate word location
+3. Uses targeted JSON search for exact timing
+4. Picks closest occurrence for repeated words
+5. Creates aligned shot list with accurate timestamps
 
 **Key rule:** Show what we hear. Vocals = singer. Guitar solo = guitarist. Drums = drummer.
 
@@ -133,20 +204,36 @@ npx ts-node generate.ts --audio chunk.mp3 --image angle_X.jpg -d clip.mp4 "Descr
 
 **Limit:** LTX max 481 frames (~19 sec at 25fps).
 
-### 6. Merge Clips
+### 6. Merge Clips (Smooth Audio)
+
+**CRITICAL:** Don't concatenate audio chunks - use continuous original audio to avoid choppy sound.
 
 ```bash
+# Step 1: Extract continuous audio segment from original
+ffmpeg -i original.mp3 -ss 72.5 -t 29.5 -y segment_audio.mp3
+
+# Step 2: Create concat list for videos
 cat > concat.txt << EOF
 file 'clips/shot_01.mp4'
 file 'clips/shot_02.mp4'
 ...
 EOF
-ffmpeg -f concat -safe 0 -i concat.txt -c copy final.mp4
+
+# Step 3: Concatenate videos WITHOUT audio
+ffmpeg -f concat -safe 0 -i concat.txt -an -c:v copy video_only.mp4
+
+# Step 4: Mux video with continuous audio (smooth, no choppiness)
+ffmpeg -i video_only.mp4 -i segment_audio.mp3 -c:v copy -c:a aac -shortest final.mp4
 ```
+
+This approach ensures:
+- Video clips sync to their individual audio during generation
+- Final merge uses ONE continuous audio track (no seams)
+- No choppy sound from audio chunk boundaries
 
 ## Storyboard Output Format
 
-Gemini outputs readable markdown (not JSON):
+Gemini outputs readable markdown (not JSON) with **VIDEO PROMPT** for each shot:
 
 ```markdown
 # MUSIC VIDEO STORYBOARD
@@ -163,10 +250,14 @@ Gemini outputs readable markdown (not JSON):
 - **Why:** Clear vocals, high energy
 
 ## Shot List
-[0:00-0:04] ANGLE_2 - Singer close-up | Vocals start strongly
-[0:04-0:06] ANGLE_6 - Crowd shot | Energy peak
+Format: [START-END] ANGLE_X - Description | AUDIO REASON | LYRICS: "lyrics" | PROMPT: "video prompt"
+
+[0:00-0:04] ANGLE_2 - Singer close-up | Vocals start | LYRICS: "וגם אני" | PROMPT: "LIVE CONCERT: Singer closeup, SINGING with mouth moving, veins in neck, intense emotion"
+[0:04-0:06] ANGLE_6 - Crowd shot | Energy peak | PROMPT: "LIVE CONCERT: Crowd jumping, hands in air, stage lights pulsing"
 ...
 ```
+
+**PROMPT field is CRITICAL** - Used directly by audio-to-video for each clip generation.
 
 ## Limits
 
