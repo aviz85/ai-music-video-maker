@@ -1,0 +1,44 @@
+# Environment and secrets
+.env
+.env.*
+*.env
+credentials.json
+**/secrets/
+**/.secrets/
+
+# API keys in skill scripts
+.claude/skills/*/scripts/.env
+
+# Project assets (large files)
+projects/*/audio/
+projects/*/images/
+projects/*/videos/
+projects/*/*.mp3
+projects/*/*.mp4
+projects/*/*.jpg
+projects/*/*.png
+
+# Keep projects folder structure
+!projects/.gitkeep
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Temporary files
+/tmp/
+*.tmp
+*.log
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
