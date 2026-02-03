@@ -1277,6 +1277,10 @@
                             <div class="pipeline-arrow"></div>
                         </div>
                         <div class="pipeline-step">
+                            <div class="pipeline-node">Remotion</div>
+                            <div class="pipeline-arrow"></div>
+                        </div>
+                        <div class="pipeline-step">
                             <div class="pipeline-node">Final Output</div>
                         </div>
                     </div>
@@ -1378,8 +1382,8 @@
                 </div>
                 <div class="feature-cell">
                     <div class="feature-num">05</div>
-                    <h3 class="feature-title">Lyrics Overlay</h3>
-                    <p class="feature-desc">Animated lyrics: karaoke, fade-in, minimal modes. Full RTL language support.</p>
+                    <h3 class="feature-title">Remotion Lyrics</h3>
+                    <p class="feature-desc">React-based video rendering with Remotion. 7 animated styles: karaoke, neon, cinematic, bounce, typewriter. Full RTL support.</p>
                 </div>
                 <div class="feature-cell">
                     <div class="feature-num">06</div>
@@ -1484,12 +1488,14 @@
 <span class="cmd">git clone</span> https://github.com/aviz85/ai-music-video-maker.git
 <span class="cmd">cd</span> ai-music-video-maker
 
-<span class="comment"># Install dependencies</span>
-<span class="cmd">cd</span> .claude/skills/audio-to-video/scripts
-<span class="cmd">npm install</span>
-
-<span class="comment"># Return to project root</span>
+<span class="comment"># Install video generation dependencies</span>
+<span class="cmd">cd</span> .claude/skills/audio-to-video/scripts && <span class="cmd">npm install</span>
 <span class="cmd">cd</span> ../../../..
+
+<span class="comment"># Setup Remotion for lyrics overlay</span>
+<span class="cmd">npx</span> create-video@latest remotion-assistant
+<span class="cmd">cd</span> remotion-assistant && <span class="cmd">npm install</span>
+<span class="cmd">cd</span> ..
 
 <span class="comment"># Configure API keys</span>
 <span class="cmd">cat</span> > .claude/skills/audio-to-video/scripts/.env << EOF
@@ -1521,6 +1527,13 @@ EOF</pre>
                         <div class="api-info">
                             <strong>ELEVENLABS_API_KEY</strong>
                             <p>Word-level transcription for lyrics. <a href="https://elevenlabs.io" target="_blank">Get from ElevenLabs →</a></p>
+                        </div>
+                    </div>
+                    <div class="api-item">
+                        <span class="api-badge" style="background: var(--signal-dim); color: var(--signal);">Free</span>
+                        <div class="api-info">
+                            <strong>Remotion</strong>
+                            <p>React-based video rendering for lyrics overlay. 7 animation styles. <a href="https://remotion.dev" target="_blank">Learn more →</a></p>
                         </div>
                     </div>
                 </div>
@@ -1565,9 +1578,9 @@ EOF</pre>
                 <div class="step">
                     <div class="step-num">4</div>
                     <div class="step-content">
-                        <h4>Add lyrics overlay</h4>
-                        <p>Request karaoke-style lyrics with word-level highlighting.</p>
-                        <code>Add lyrics overlay with karaoke style</code>
+                        <h4>Add Remotion lyrics</h4>
+                        <p>Render animated lyrics with Remotion. Choose from 7 styles: karaoke, neon, cinematic, bounce, typewriter, minimal, fade.</p>
+                        <code>Add lyrics overlay with cinematic style</code>
                     </div>
                 </div>
             </div>
