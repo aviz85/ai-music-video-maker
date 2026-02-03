@@ -133,12 +133,37 @@ Format: [START-END] ANGLE_X - Description | AUDIO REASON | LYRICS: "exact lyrics
 
 ## RULES
 - Total duration: ${audioDuration} seconds
-- Shot length: 2-5 seconds each
+- Shot length: 2-5 seconds each (vary based on energy - faster cuts for high energy, longer for emotional moments)
 - EVERY shot must have AUDIO REASON explaining why that angle
 - EVERY shot with vocals MUST include LYRICS field with exact words
 - Show what we HEAR - vocals = singer, guitar = guitarist, etc.
 - Cut on beat changes
-- More cuts during high energy sections`;
+- More cuts during high energy sections
+
+## SHOT VARIETY (CRITICAL)
+**NEVER show the same subject in 2 consecutive shots.** This creates jarring jump cuts.
+
+BAD examples (DON'T DO THIS):
+- [0:00-0:03] ANGLE_2 - Singer closeup → [0:03-0:06] ANGLE_8 - Singer low angle (SAME SUBJECT!)
+- [0:10-0:13] ANGLE_3 - Guitarist → [0:13-0:16] ANGLE_3 - Guitarist hands (SAME SUBJECT!)
+
+GOOD examples (DO THIS):
+- [0:00-0:03] ANGLE_2 - Singer closeup → [0:03-0:05] ANGLE_1 - Wide shot → [0:05-0:08] ANGLE_8 - Singer low angle
+- [0:10-0:13] ANGLE_3 - Guitarist → [0:13-0:15] ANGLE_6 - Crowd → [0:15-0:18] ANGLE_3 - Guitarist hands
+
+**PACING VARIETY:**
+- Alternate between CLOSE-UP → WIDE → CLOSE-UP or CLOSE-UP → DIFFERENT CLOSE-UP
+- High energy sections: 1.5-2 second cuts (fast, punchy)
+- Emotional/building sections: 3-5 second cuts (let moments breathe)
+- Transitions/breaks: Use ANGLE_7 silhouette or ANGLE_9 behind band
+- Match cut rhythm to music tempo - faster song = faster cuts
+
+**DYNAMIC FLOW:**
+- Start with establishing wide shot (ANGLE_1) for context
+- Build intensity by moving closer (wide → medium → closeup)
+- Peak moments: fast cuts between multiple angles
+- Quiet moments: hold on singer or silhouette longer
+- End sections with transition shots (ANGLE_7 or ANGLE_9)`;
 
   console.log("Analyzing audio with Gemini...");
   console.log(`Audio file: ${audioPath}`);
