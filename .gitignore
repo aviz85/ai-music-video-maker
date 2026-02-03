@@ -9,24 +9,11 @@ credentials.json
 # API keys in skill scripts
 .claude/skills/*/scripts/.env
 
-# Project assets (large files)
-projects/*/audio/
-projects/*/images/
-projects/*/videos/
-projects/*/*.mp3
-projects/*/*.mp4
-projects/*/*.jpg
-projects/*/*.png
-projects/*.mp3
-projects/*.mp4
-
-# Keep transcripts and storyboards
-!projects/*/*.md
-!projects/*/transcription
-!projects/*/transcription.json
-
-# Keep projects folder structure
-!projects/.gitkeep
+# Projects - ignore all except example
+projects/*
+projects/*/*
+!projects/example-project/
+!projects/example-project/*
 
 # Node modules
 node_modules/
