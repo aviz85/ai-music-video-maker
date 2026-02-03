@@ -361,11 +361,11 @@
             height: 16px;
         }
 
-        /* Pipeline display - like a broadcast routing diagram */
+        /* Pipeline display - animated signal flow */
         .pipeline-display {
             background: var(--charcoal);
             border: 1px solid var(--ash);
-            padding: 24px;
+            padding: 32px 24px 24px;
             margin-bottom: 64px;
             position: relative;
             overflow: hidden;
@@ -374,8 +374,8 @@
         .pipeline-display::before {
             content: 'SIGNAL FLOW';
             position: absolute;
-            top: 8px;
-            left: 12px;
+            top: 10px;
+            left: 16px;
             font-family: var(--mono);
             font-size: 9px;
             color: var(--fog);
@@ -385,40 +385,109 @@
         .pipeline-flow {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding-top: 16px;
-            overflow-x: auto;
-            scrollbar-width: none;
+            justify-content: center;
+            gap: 0;
+            flex-wrap: wrap;
         }
 
-        .pipeline-flow::-webkit-scrollbar {
-            display: none;
+        .pipeline-step {
+            display: flex;
+            align-items: center;
         }
 
         .pipeline-node {
-            flex-shrink: 0;
             background: var(--steel);
             border: 1px solid var(--ash);
-            padding: 12px 20px;
+            padding: 12px 16px;
             font-family: var(--mono);
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.03em;
             white-space: nowrap;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            position: relative;
         }
 
         .pipeline-node:hover {
             border-color: var(--signal);
             color: var(--signal);
+            box-shadow: 0 0 20px var(--signal-dim);
         }
 
         .pipeline-arrow {
-            color: var(--signal);
-            font-size: 18px;
-            flex-shrink: 0;
-            opacity: 0.6;
+            width: 32px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--ash), var(--signal), var(--ash));
+            background-size: 200% 100%;
+            position: relative;
+            animation: signalFlow 2s linear infinite;
+        }
+
+        .pipeline-arrow::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid var(--signal);
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+        }
+
+        @keyframes signalFlow {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+
+        /* Stagger animation on each arrow */
+        .pipeline-step:nth-child(2) .pipeline-arrow { animation-delay: 0.3s; }
+        .pipeline-step:nth-child(3) .pipeline-arrow { animation-delay: 0.6s; }
+        .pipeline-step:nth-child(4) .pipeline-arrow { animation-delay: 0.9s; }
+        .pipeline-step:nth-child(5) .pipeline-arrow { animation-delay: 1.2s; }
+        .pipeline-step:nth-child(6) .pipeline-arrow { animation-delay: 1.5s; }
+
+        /* Mobile: vertical layout */
+        @media (max-width: 900px) {
+            .pipeline-flow {
+                flex-direction: column;
+                gap: 0;
+            }
+
+            .pipeline-step {
+                flex-direction: column;
+            }
+
+            .pipeline-arrow {
+                width: 2px;
+                height: 24px;
+                background: linear-gradient(180deg, var(--ash), var(--signal), var(--ash));
+                background-size: 100% 200%;
+                animation: signalFlowVertical 2s linear infinite;
+            }
+
+            .pipeline-arrow::after {
+                right: 50%;
+                top: auto;
+                bottom: 0;
+                transform: translateX(50%);
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 6px solid var(--signal);
+                border-bottom: none;
+            }
+
+            @keyframes signalFlowVertical {
+                0% { background-position: 0 100%; }
+                100% { background-position: 0 -100%; }
+            }
+
+            .pipeline-node {
+                width: 200px;
+                text-align: center;
+            }
         }
 
         /* Video monitor frame */
@@ -970,11 +1039,6 @@
                 padding: 100px 0 60px;
             }
 
-            .pipeline-flow {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-
             .features-grid {
                 grid-template-columns: 1fr;
             }
@@ -1085,17 +1149,29 @@
 
                 <div class="pipeline-display">
                     <div class="pipeline-flow">
-                        <div class="pipeline-node">Audio Input</div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-node">ElevenLabs</div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-node">Gemini Analysis</div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-node">4K Collage</div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-node">LTX Video</div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-node">Final Output</div>
+                        <div class="pipeline-step">
+                            <div class="pipeline-node">Audio Input</div>
+                            <div class="pipeline-arrow"></div>
+                        </div>
+                        <div class="pipeline-step">
+                            <div class="pipeline-node">ElevenLabs</div>
+                            <div class="pipeline-arrow"></div>
+                        </div>
+                        <div class="pipeline-step">
+                            <div class="pipeline-node">Gemini</div>
+                            <div class="pipeline-arrow"></div>
+                        </div>
+                        <div class="pipeline-step">
+                            <div class="pipeline-node">4K Collage</div>
+                            <div class="pipeline-arrow"></div>
+                        </div>
+                        <div class="pipeline-step">
+                            <div class="pipeline-node">LTX Video</div>
+                            <div class="pipeline-arrow"></div>
+                        </div>
+                        <div class="pipeline-step">
+                            <div class="pipeline-node">Final Output</div>
+                        </div>
                     </div>
                 </div>
 
