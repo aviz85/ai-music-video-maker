@@ -268,69 +268,99 @@ EOF
 # Step 3: Concatenate videos WITHOUT audio
 ffmpeg -f concat -safe 0 -i concat.txt -an -c:v copy video_only.mp4
 
-# Step 4: Mux video with continuous audio (smooth, no choppiness)
-ffmpeg -i video_only.mp4 -i segment_audio.mp3 -c:v copy -c:a aac -shortest final.mp4
+# Step 4: Mux video with continuous audio + FADE OUT (smooth endings)
+# IMPORTANT: Always add 2-second fade out for segment videos
+DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 video_only.mp4)
+FADE_START=$(echo "$DURATION - 2" | bc)
+
+ffmpeg -i video_only.mp4 -i segment_audio.mp3 \
+  -vf "fade=t=out:st=${FADE_START}:d=2" \
+  -af "afade=t=out:st=${FADE_START}:d=2" \
+  -c:v libx264 -c:a aac -shortest final.mp4
 ```
+
+**FADE OUT is CRITICAL** for segment videos - prevents abrupt endings.
 
 This approach ensures:
 - Video clips sync to their individual audio during generation
 - Final merge uses ONE continuous audio track (no seams)
 - No choppy sound from audio chunk boundaries
+- **Smooth 2-second fade out at the end**
 
 ### 7. Add Lyrics Overlay (DEFAULT) - Use `lyrics-overlay` Skill
 
 **This step is ON by default.** Skip only if user explicitly says "no titles".
 
-Use the global `lyrics-overlay` skill for beautiful animated titles with multiple templates.
+#### Style Selection Guide
 
-#### Available Templates
+Choose style based on song genre, mood, and energy:
 
-| Template | Description | Best For |
-|----------|-------------|----------|
-| `karaoke` | Spring animation, current word glows | **Default for music** |
-| `minimal` | Full line, current word highlights | Clean look |
-| `fade` | Words fade in smoothly | Narration |
-| `hero` | Large dramatic center text | Impact moments |
+| Style | Component | Best For | When to Use |
+|-------|-----------|----------|-------------|
+| `karaoke` | LyricsOverlay | Pop, dance, singalong | **Default** - energetic, accessible |
+| `minimal` | LyricsOverlay | Ballads, acoustic | Clean, don't distract from visuals |
+| `fade` | LyricsOverlay | Narration, spoken word | Gentle, smooth |
+| `neon` | LyricsOverlayNeon | Electronic, EDM, synthwave | Cyberpunk, futuristic, high-energy |
+| `cinematic` | LyricsOverlayCinematic | Epic, rock, trailers | **CENTER** - dramatic, powerful, movie-like |
+| `bounce` | LyricsOverlayBounce | Kids, fun, upbeat | Playful, colorful, joyful |
+| `typewriter` | LyricsOverlayTypewriter | Indie, retro, storytelling | Nostalgic, intimate, artistic |
+
+**Decision Logic:**
+```
+IF genre == electronic/EDM → neon
+ELSE IF genre == rock/epic/powerful → cinematic (CENTER, large text)
+ELSE IF genre == kids/fun → bounce
+ELSE IF genre == indie/retro → typewriter
+ELSE IF energy == low (ballad) → minimal
+ELSE → karaoke (default)
+```
 
 #### Quick Usage
 
 1. Copy video + subtitles JSON to Remotion public folder:
 ```bash
-cp videos/final.mp4 ~/remotion-assistant/public/videos/
-cp subtitles ~/remotion-assistant/public/lyrics/subtitles.json
+cp videos/final.mp4 ~/remotion-assistant/public/videos/<project>.mp4
+cp subtitles ~/remotion-assistant/public/lyrics/<project>.json
 ```
 
-2. Create composition using LyricsOverlay:
+2. Create temporary composition in Remotion:
 ```typescript
-// ~/remotion-assistant/src/compositions/MyVideoLyrics.tsx
-import { LyricsOverlay, parseElevenLabsTranscript } from './LyricsOverlay';
+// ~/remotion-assistant/src/compositions/TempLyrics.tsx
+import { LyricsOverlayCinematic, parseElevenLabsTranscript } from './LyricsOverlayCinematic';
 import { staticFile } from 'remotion';
 
-const transcript = require('../../public/lyrics/subtitles.json');
+const transcript = require('../../public/lyrics/<project>.json');
 
-export const MyVideoLyrics: React.FC = () => {
+export const TempLyrics: React.FC = () => {
   const lyrics = parseElevenLabsTranscript(transcript, {
-    maxWordsPerLine: 6,
-    lineGapThreshold: 0.8
+    maxWordsPerLine: 5,
+    lineGapThreshold: 0.6
   });
 
   return (
-    <LyricsOverlay
-      videoSrc={staticFile('videos/final.mp4')}
+    <LyricsOverlayCinematic
+      videoSrc={staticFile('videos/<project>.mp4')}
       lyrics={lyrics}
-      style="karaoke"
-      isRTL={true}
-      highlightColor="#FF6B35"
+      fontSize={90}
+      accentColor="#FF0000"  // Red for rock
+      useOffthreadVideo={true}
     />
   );
 };
 ```
 
-3. Register in Root.tsx and render:
+3. Register in Root.tsx, render, then **cleanup**:
 ```bash
 cd ~/remotion-assistant
-npx remotion render MyVideoLyrics out/final_with_lyrics.mp4
+npx remotion render TempLyrics out/final_with_lyrics.mp4
+
+# CLEANUP: Remove temp composition after render
+rm src/compositions/TempLyrics.tsx
+# Remove import and Composition from Root.tsx (manual or sed)
 ```
+
+**IMPORTANT:** Keep Remotion clean - only template components stay permanently.
+After each project render, delete the project-specific composition file.
 
 #### For Segment Videos: Offset Timing
 

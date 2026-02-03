@@ -7,205 +7,206 @@ description: "Beautiful animated lyrics overlay for videos using Remotion. Use f
 
 Add beautiful animated lyrics/captions to videos using Remotion with multiple template styles.
 
-## Components
+## Style Selection Guide (For Agent)
 
-| Component | File | Description |
-|-----------|------|-------------|
-| `LyricsOverlay` | `LyricsOverlay.tsx` | Classic styles: karaoke, minimal, fade |
-| `LyricsOverlayNeon` | `LyricsOverlayNeon.tsx` | Cyberpunk neon with glitch effects |
+Choose style based on song mood, genre, and visual aesthetic:
 
-## Template Styles
+| Style | Component | Best For | Mood/Vibe |
+|-------|-----------|----------|-----------|
+| **karaoke** | `LyricsOverlay` | Pop, dance, singalong | Energetic, fun, accessible |
+| **minimal** | `LyricsOverlay` | Ballads, acoustic | Clean, elegant, subtle |
+| **fade** | `LyricsOverlay` | Narration, spoken word | Gentle, smooth, understated |
+| **neon** | `LyricsOverlayNeon` | Electronic, synthwave, EDM | Cyberpunk, futuristic, high-energy |
+| **cinematic** | `LyricsOverlayCinematic` | Epic, orchestral, trailers | Dramatic, powerful, movie-like |
+| **bounce** | `LyricsOverlayBounce` | Kids, fun, upbeat | Playful, colorful, joyful |
+| **typewriter** | `LyricsOverlayTypewriter` | Storytelling, retro, indie | Nostalgic, intimate, artistic |
 
-### Classic Styles (`LyricsOverlay`)
+### Style Details
 
-| Style | Description | Best For |
-|-------|-------------|----------|
-| `karaoke` | Word-by-word spring animation, current word glows | Music videos, songs |
-| `minimal` | Full line shows, current word highlights | Clean, professional |
-| `fade` | Words fade in smoothly as spoken | Narration, speeches |
+#### 1. Karaoke (Default)
+- **Position:** Bottom
+- **Animation:** Spring bounce word-by-word, current word glows
+- **Colors:** White text, gold/orange highlight
+- **Use when:** Standard music videos, pop songs, singalong content
 
-### Neon Style (`LyricsOverlayNeon`)
+#### 2. Minimal
+- **Position:** Bottom
+- **Animation:** Full line shows, current word scales up slightly
+- **Colors:** Subtle white/gray
+- **Use when:** Clean look needed, don't distract from visuals
 
-Cyberpunk-inspired with:
-- **Chromatic aberration** - RGB split on active words
-- **Glitch effects** - Subtle position jitter on entrance
-- **Neon glow** - Multi-layer glow with flicker
-- **Scanlines** - Retro CRT overlay
-- **Dark gradient** - Purple-tinted background
+#### 3. Fade
+- **Position:** Bottom
+- **Animation:** Words fade in smoothly as spoken
+- **Colors:** Pure white
+- **Use when:** Speeches, narration, gentle songs
+
+#### 4. Neon (Cyberpunk)
+- **Position:** Bottom or center
+- **Animation:** Chromatic aberration, glitch on entrance, flicker
+- **Colors:** Magenta glow (#FF00FF), cyan split (#00FFFF)
+- **Effects:** Scanlines, RGB split, multi-layer glow
+- **Use when:** Electronic music, synthwave, futuristic aesthetic
+
+#### 5. Cinematic (Movie Trailer)
+- **Position:** CENTER (large, dramatic)
+- **Animation:** Words scale from big to normal with blur, uppercase
+- **Colors:** Gold accent (#FFD700) on white
+- **Effects:** Vignette, letterbox bars, dramatic glow
+- **Use when:** Epic songs, trailers, powerful moments, orchestral
+
+#### 6. Bounce (Playful)
+- **Position:** Center
+- **Animation:** Words bounce in from random positions, rotation
+- **Colors:** Rainbow palette, each word different color
+- **Effects:** Continuous subtle bounce on active word
+- **Use when:** Fun/upbeat songs, kids content, party vibes
+
+#### 7. Typewriter (Retro)
+- **Position:** Center
+- **Animation:** Character-by-character reveal with cursor
+- **Themes:** `classic` (white), `terminal` (green), `vintage` (sepia)
+- **Effects:** Blinking cursor, themed backgrounds
+- **Use when:** Storytelling, indie, nostalgic feel, artistic
 
 ## Quick Start
 
 ### 1. Prepare Lyrics Data
 
-From ElevenLabs transcription JSON (word-level timing):
-
 ```bash
-# Get word-level transcription first
 cd skills/transcribe/scripts
 npx tsx transcribe.ts -i <audio.mp3> -o <project>/subtitles --json
 ```
 
 ### 2. Create Composition
 
-#### Classic Style (Karaoke)
-
 ```typescript
-import { LyricsOverlay, parseElevenLabsTranscript } from './LyricsOverlay';
+// Pick the right component for your style:
+import { LyricsOverlay } from './LyricsOverlay';           // karaoke, minimal, fade
+import { LyricsOverlayNeon } from './LyricsOverlayNeon';   // neon
+import { LyricsOverlayCinematic } from './LyricsOverlayCinematic'; // cinematic
+import { LyricsOverlayBounce } from './LyricsOverlayBounce';       // bounce
+import { LyricsOverlayTypewriter } from './LyricsOverlayTypewriter'; // typewriter
+
+import { parseElevenLabsTranscript } from './LyricsOverlay';
 import { staticFile } from 'remotion';
 
 const transcript = require('../../public/lyrics/subtitles.json');
 
-export const MyLyricsVideo: React.FC = () => {
+export const MyVideo: React.FC = () => {
   const lyrics = parseElevenLabsTranscript(transcript, {
     maxWordsPerLine: 6,
     lineGapThreshold: 0.8,
-    punctuationBreak: true
   });
 
+  // Example: Cinematic style
   return (
-    <LyricsOverlay
+    <LyricsOverlayCinematic
       videoSrc={staticFile('videos/input.mp4')}
       lyrics={lyrics}
-      style="karaoke"
-      position="bottom"
-      fontSize={56}
-      highlightColor="#FFD700"
-      primaryColor="#FFFFFF"
+      fontSize={90}
+      accentColor="#FFD700"
       isRTL={true}
+      useOffthreadVideo={true}
     />
   );
 };
 ```
 
-#### Neon Style (Cyberpunk)
-
-```typescript
-import { LyricsOverlayNeon, parseElevenLabsTranscript } from './LyricsOverlayNeon';
-import { staticFile } from 'remotion';
-
-const transcript = require('../../public/lyrics/subtitles.json');
-
-export const MyNeonVideo: React.FC = () => {
-  const lyrics = parseElevenLabsTranscript(transcript, {
-    maxWordsPerLine: 5,
-    lineGapThreshold: 0.6,
-    punctuationBreak: true
-  });
-
-  return (
-    <LyricsOverlayNeon
-      videoSrc={staticFile('videos/input.mp4')}
-      lyrics={lyrics}
-      position="bottom"
-      fontSize={58}
-      glowColor="#FF00FF"      // Magenta neon
-      secondaryGlow="#00FFFF"  // Cyan
-      primaryColor="#E8E8E8"
-      isRTL={true}
-      glitchIntensity={0.4}    // 0-1
-    />
-  );
-};
-```
-
-### 3. Register & Render
-
-```typescript
-// In Root.tsx
-<Composition
-  id="MyLyricsVideo"
-  component={MyLyricsVideo}
-  durationInFrames={fps * duration}
-  fps={25}
-  width={1920}
-  height={1080}
-/>
-```
+### 3. Render
 
 ```bash
 cd ~/remotion-assistant
-npx remotion render MyLyricsVideo out/final.mp4
+npx remotion render MyVideo out/final.mp4
 ```
 
 ## Props Reference
 
-### LyricsOverlay Props
+### Common Props (All Styles)
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `videoSrc` | string | required | Video file path |
 | `lyrics` | LyricsData | required | Parsed lyrics data |
-| `style` | 'karaoke' \| 'minimal' \| 'fade' | 'karaoke' | Animation style |
-| `position` | 'bottom' \| 'center' \| 'top' | 'bottom' | Text position |
-| `fontSize` | number | 56 | Base font size |
-| `primaryColor` | string | '#FFFFFF' | Default text color |
-| `highlightColor` | string | '#FF6B35' | Active word color |
+| `fontSize` | number | varies | Base font size |
 | `isRTL` | boolean | auto | Right-to-left mode |
-| `showGradientOverlay` | boolean | true | Dark gradient behind text |
-| `useOffthreadVideo` | boolean | false | Use OffthreadVideo |
+| `useOffthreadVideo` | boolean | false | Use OffthreadVideo for better memory |
 
-### LyricsOverlayNeon Props
+### LyricsOverlay (karaoke/minimal/fade)
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `videoSrc` | string | required | Video file path |
-| `lyrics` | LyricsData | required | Parsed lyrics data |
-| `position` | 'bottom' \| 'center' \| 'top' | 'bottom' | Text position |
-| `fontSize` | number | 60 | Base font size |
-| `primaryColor` | string | '#E0E0E0' | Default text color |
-| `glowColor` | string | '#FF00FF' | Main neon glow (magenta) |
-| `secondaryGlow` | string | '#00FFFF' | Chromatic aberration (cyan) |
-| `glitchIntensity` | number | 0.5 | Glitch effect strength (0-1) |
-| `isRTL` | boolean | auto | Right-to-left mode |
-| `showGradientOverlay` | boolean | true | Dark gradient behind text |
-| `useOffthreadVideo` | boolean | false | Use OffthreadVideo |
+| Prop | Type | Default |
+|------|------|---------|
+| `style` | 'karaoke' \| 'minimal' \| 'fade' | 'karaoke' |
+| `position` | 'bottom' \| 'center' \| 'top' | 'bottom' |
+| `primaryColor` | string | '#FFFFFF' |
+| `highlightColor` | string | '#FF6B35' |
 
-## Color Schemes
+### LyricsOverlayNeon
 
-### Classic
+| Prop | Type | Default |
+|------|------|---------|
+| `glowColor` | string | '#FF00FF' |
+| `secondaryGlow` | string | '#00FFFF' |
+| `glitchIntensity` | number | 0.5 |
 
-| Scheme | Primary | Highlight | Use |
-|--------|---------|-----------|-----|
-| Gold | `#FFFFFF` | `#FFD700` | Elegant, warm |
-| Orange | `#FFFFFF` | `#FF6B35` | Energetic |
-| Clean | `#E0E0E0` | `#FFFFFF` | Minimal |
+### LyricsOverlayCinematic
 
-### Neon
+| Prop | Type | Default |
+|------|------|---------|
+| `accentColor` | string | '#FFD700' |
+| `letterSpacing` | number | 0.15 |
+| **Position** | - | **CENTER (fixed)** |
 
-| Scheme | Glow | Secondary | Vibe |
-|--------|------|-----------|------|
-| Cyberpunk | `#FF00FF` | `#00FFFF` | Classic neon |
-| Matrix | `#00FF00` | `#003300` | Hacker |
-| Sunset | `#FF6600` | `#FF0066` | Warm neon |
-| Ice | `#00FFFF` | `#0066FF` | Cool, electric |
+### LyricsOverlayBounce
 
-## Hebrew/RTL Support
+| Prop | Type | Default |
+|------|------|---------|
+| `highlightColor` | string | '#FFFFFF' |
+| `bounceIntensity` | number | 0.7 |
+| `position` | 'bottom' \| 'center' \| 'top' | 'center' |
 
-Auto-detected, or set explicitly:
+### LyricsOverlayTypewriter
 
-```typescript
-isRTL={true}   // Force RTL for Hebrew
-```
+| Prop | Type | Default |
+|------|------|---------|
+| `theme` | 'classic' \| 'terminal' \| 'vintage' | 'classic' |
+| `showCursor` | boolean | true |
+| `typeSpeed` | number | 20 |
+| `position` | 'bottom' \| 'center' \| 'top' | 'center' |
 
-## Offset for Segments
+## Color Presets
 
-When video is extracted from a longer song:
+### By Style
 
-```typescript
-import { shiftLyricsTiming } from '../utils/lyricsParser';
+| Style | Recommended Colors |
+|-------|-------------------|
+| karaoke | Gold `#FFD700`, Orange `#FF6B35` |
+| neon | Magenta `#FF00FF` + Cyan `#00FFFF` |
+| cinematic | Gold `#FFD700`, Silver `#C0C0C0` |
+| bounce | Rainbow (automatic) |
+| typewriter | Theme-based (green/sepia/white) |
 
-// Original song timing: 105s-130s, video starts at 0
-const offsetLyrics = shiftLyricsTiming(lyrics, -105);
-```
+### By Song Genre
+
+| Genre | Style | Colors |
+|-------|-------|--------|
+| Pop | karaoke | `#FF6B35` highlight |
+| Electronic | neon | `#FF00FF` / `#00FFFF` |
+| Rock/Metal | cinematic | `#FF0000` accent |
+| Ballad | minimal | `#FFFFFF` highlight |
+| Kids | bounce | Rainbow |
+| Indie | typewriter vintage | Sepia |
 
 ## Integration with music-video
 
-This skill is invoked automatically by the `music-video` skill in Step 7.
+This skill is called in Step 7 of the music-video pipeline.
 
-Default style is `karaoke`. Use `neon` for cyberpunk aesthetic.
+The agent should select style based on:
+1. **Song genre** (electronic → neon, epic → cinematic)
+2. **Energy level** (high → bounce/neon, low → minimal/fade)
+3. **Visual aesthetic** (modern → neon, retro → typewriter, dramatic → cinematic)
 
 ## Dependencies
 
 - `~/remotion-assistant` - Remotion project
-- `@remotion/captions` - Caption utilities
 - `transcribe` skill - For word-level timing
