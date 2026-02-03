@@ -210,7 +210,31 @@ The agent should select style based on:
 
 All styles have **slower decay** - words linger ~1.5 seconds after their timing ends for better readability. The fade starts AFTER the line ends, not before.
 
+## Remotion Templates (Included)
+
+All Remotion components are included in this skill:
+
+```
+.claude/skills/lyrics-overlay/remotion-templates/
+├── compositions/
+│   ├── LyricsOverlay.tsx          # karaoke, minimal, fade
+│   ├── LyricsOverlayNeon.tsx      # neon/cyberpunk
+│   ├── LyricsOverlayCinematic.tsx # cinematic/epic
+│   ├── LyricsOverlayBounce.tsx    # bounce/playful
+│   └── LyricsOverlayTypewriter.tsx # typewriter/retro
+└── utils/
+    └── lyricsParser.ts            # ElevenLabs JSON parser
+```
+
+### Setup Remotion Project
+
+Copy templates to your Remotion project:
+```bash
+# One-time setup
+cp -r .claude/skills/lyrics-overlay/remotion-templates/* ~/remotion-assistant/src/
+```
+
 ## Dependencies
 
-- `~/remotion-assistant` - Remotion project
-- `transcribe` skill - For word-level timing
+- Remotion project (use templates above)
+- `transcribe` skill - For word-level timing (included in project)
