@@ -161,27 +161,11 @@ npx ts-node generate.ts \
 
 ---
 
-## Step 5.5: Normalize FPS (24fps → 25fps) — MANDATORY
-
-**LTX 2.3 outputs 24fps. Remotion renders at 25fps. Frame mismatch = choppy video. Fix BEFORE concat.**
-
-```bash
-mkdir -p projects/<slug>/videos/clips_25fps
-for f in projects/<slug>/videos/clips/shot_*.mp4; do
-  name=$(basename "$f")
-  ffmpeg -i "$f" -r 25 -c:v libx264 -preset fast -crf 18 -an \
-    projects/<slug>/videos/clips_25fps/$name -y
-done
-# Always use clips_25fps/ for concatenation — never clips/
-```
-
----
-
 ## Step 6: Merge with Continuous Audio
 
 ```bash
-# Concat list — use clips_25fps/
-ls projects/<slug>/videos/clips_25fps/shot_*.mp4 | sort | \
+# Concat list — use original clips/ (fps handled by Remotion at Step 7)
+ls projects/<slug>/videos/clips/shot_*.mp4 | sort | \
   awk '{print "file \047"$0"\047"}' > /tmp/concat_<slug>.txt
 
 # Join videos (no audio)
@@ -232,7 +216,8 @@ cp projects/$SLUG/subtitles/words $REMOTION/public/lyrics/${SLUG}.json
 ### Create composition
 ```typescript
 // $REMOTION/src/compositions/Temp_<Slug>.tsx
-import { LyricsOverlay, parseElevenLabsTranscript, shiftLyricsTiming } from './LyricsOverlay';
+import { LyricsOverlay, parseElevenLabsTranscript } from './LyricsOverlay';
+import { shiftLyricsTiming } from '../utils/lyricsParser';
 import { staticFile } from 'remotion';
 
 const transcript = require('../../public/lyrics/<slug>.json');
@@ -254,6 +239,19 @@ export const Temp_<Slug>: React.FC = () => {
     />
   );
 };
+```
+
+### Register in Root.tsx — CRITICAL: use fps={24} to match LTX 2.3 output
+```typescript
+// LTX 2.3 generates 24fps. Set fps={24} so Remotion matches natively — no re-encoding needed.
+<Composition
+  id="Temp_<Slug>"
+  component={Temp_<Slug>}
+  fps={24}
+  durationInFrames={Math.round(<DURATION_SECONDS> * 24)}
+  width={1920}
+  height={1080}
+/>
 ```
 
 ### Register in Root.tsx, render, then cleanup
