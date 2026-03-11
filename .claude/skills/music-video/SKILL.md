@@ -6,411 +6,303 @@ allowed-tools: Bash, Read, Write, Task
 
 # Multi-Camera Music Video Generator
 
-Generate professional multi-camera music videos from audio input using AI.
+Generate professional AI music videos from a YouTube URL or audio file. The pipeline finds the most powerful moment, cuts it precisely, generates unique cinematic visuals, and adds animated lyrics.
 
 ## Pipeline Overview
 
 ```
-Audio Input → [ElevenLabs Transcribe + Gemini Analysis] → Aligned Storyboard →
-4K Collage (16:9) → Split 9 Frames → Accurate Audio Chunks → LTX Video → Merge → Burn Titles → Final (16:9)
+YouTube URL → MP3 → ElevenLabs (word-level timing) → Gemini (listen + build visual plan)
+→ Aligned Chorus Cut (20-30s) → 4K Collage → Split 9 Angles → LTX 2.3 Clips → Merge → Remotion Lyrics → Final MP4
 ```
-
-**DEFAULT:** Titles/lyrics are burned onto the final video. Skip only if user explicitly says "no titles".
-
-## CRITICAL: Timing Alignment
-
-**Problem:** Gemini's audio timing is often inaccurate.
-**Solution:** Use ElevenLabs transcription (word-level timing) as ground truth.
-
-### Pipeline:
-1. **ElevenLabs Transcribe** → Get word-level timing (ground truth)
-2. **Gemini Analysis** → Get musical structure, shot suggestions, LYRICS per shot
-3. **Claude Aligns** → Match Gemini's lyrics to ElevenLabs timing
-4. **Create Accurate Chunks** → Based on aligned timing
-
-### Alignment Process:
-```
-Gemini says: [1:30-1:33] ANGLE_2 - Singer | LYRICS: "וגם אני חולם"
-ElevenLabs says: "וגם" at 92.5s, "אני" at 93.1s, "חולם" at 93.8s
-Aligned timing: [1:32.5-1:34.5] (based on actual word positions)
-```
-
-**Trust order:** ElevenLabs timing > Gemini timing
-
-## Default Format: 16:9
-
-**CRITICAL:** All assets use 16:9 aspect ratio by default:
-- Collage: 16:9 (e.g., 3840x2160 for 4K)
-- Each frame: 16:9 (3x3 grid, no borders!)
-- Final video: 16:9
-
-When generating the collage, ALWAYS use `-a 16:9` flag with image-generation skill.
-
-The 3x3 grid of 16:9 frames naturally creates a 16:9 overall collage:
-- 3 columns × 16 = 48
-- 3 rows × 9 = 27
-- 48:27 = 16:9 ✓
 
 ## Quick Start
 
-Claude orchestrates the entire pipeline. Provide:
-- Audio file (MP3, WAV) OR prompt to generate music
-- Optional: Duration limit (default: finds best vocal section)
-- Optional: "cheap mode" for faster/cheaper generation
+Provide: song name + artist (or YouTube URL). Claude runs everything.
 
-## Modes
+Target: **20-30 seconds** of the strongest moment (chorus/peak). Default 16:9.
 
-| Mode | Description |
-|------|-------------|
-| **Default** | Best quality - Gemini for images, full LTX quality |
-| **Cheap** | Budget mode - uses `--cheap` flag in image-generation (fal.ai FLUX klein), lower video quality |
+---
 
-When user asks for "cheap mode" or budget/quick generation:
-- Use `--cheap` flag with image-generation skill
-- Use `--quality low` with audio-to-video
-- Shorter video segments (max 10 sec per clip)
-
-## Project Structure
-
-**IMPORTANT:** Each project creates a subfolder in the LOCAL project root `./projects/` (NOT inside the skill folder). This keeps all assets easily accessible for review.
-
-```
-projects/
-└── rock-video-20260203/
-    ├── audio/
-    │   ├── original.mp3
-    │   └── chunks/
-    │       ├── shot_01.mp3
-    │       └── ...
-    ├── images/
-    │   ├── collage.jpg (4K 3x3)
-    │   └── angles/
-    │       ├── angle_1.jpg (wide stage)
-    │       ├── angle_2.jpg (singer closeup)
-    │       ├── angle_3.jpg (guitar)
-    │       ├── angle_4.jpg (drums)
-    │       ├── angle_5.jpg (bass)
-    │       ├── angle_6.jpg (crowd)
-    │       ├── angle_7.jpg (silhouette)
-    │       ├── angle_8.jpg (low angle)
-    │       └── angle_9.jpg (behind band)
-    ├── videos/
-    │   ├── clips/
-    │   │   └── shot_XX.mp4
-    │   └── final.mp4
-    └── storyboard.md
-```
-
-## Pipeline Steps
-
-### 1a. Transcribe Audio (ElevenLabs) - GROUND TRUTH TIMING ⚠️ MANDATORY FIRST
-
-**CRITICAL:** This step MUST be done BEFORE audio chunking. Word-level timing is essential for:
-1. Aligning shot boundaries to actual lyrics
-2. Generating accurate SRT for titles overlay
-3. Matching Gemini's suggested lyrics to real timestamps
-
-Use the global `transcribe` skill to get word-level timing:
+## Step 0: Download from YouTube
 
 ```bash
-cd skills/transcribe/scripts
-npx tsx transcribe.ts -i <audio.mp3> -o <project>/subtitles --json
+mkdir -p projects/<slug>/audio
+yt-dlp -x --audio-format mp3 --audio-quality 0 \
+  -o "projects/<slug>/audio/original.%(ext)s" \
+  "ytsearch1:<Artist> <Song> official audio"
 ```
 
-This outputs:
-- `subtitles` - JSON with word-level timing (the source of truth)
-- `subtitles.srt` - SRT file for burning titles
+---
 
-**NEVER chunk audio based on Gemini timing alone.** Always cross-reference with ElevenLabs word timing.
-
-### 1b. Audio Analysis (Gemini)
+## Step 1a: Transcribe (Word-Level Timing — GROUND TRUTH)
 
 ```bash
-cd .claude/skills/audio-to-video/scripts
-npx ts-node analyze_audio.ts <audio.mp3> <duration_seconds> <output.md>
+mkdir -p projects/<slug>/subtitles
+cd /Users/aviz/.claude/skills/transcribe/scripts
+npx tsx transcribe.ts \
+  -i projects/<slug>/audio/original.mp3 \
+  -o projects/<slug>/subtitles/words \
+  --json
 ```
 
-Gemini **listens deeply** and outputs readable markdown:
-- Finds sections with **clear vocals/lyrics**
-- Identifies **instrument highlights** (guitar solos, drum fills)
-- Maps **what we HEAR to what we SHOW**
-- Recommends **best segment** for partial videos
-- Creates shot list with **AUDIO REASON** and **LYRICS** for each cut
+Outputs: `subtitles/words` (JSON with word timestamps) + `subtitles/words.srt`
 
-**IMPORTANT:** Gemini must output LYRICS for each shot so Claude can align with ElevenLabs.
+---
 
-### 1c. Claude Aligns Timing (Two-Step Refinement)
-
-**The Workflow:**
-1. Gemini suggests shots with LYRICS
-2. Fuzzy search (threshold 0.8-0.9) in SRT for the sentence/words
-3. Find the **closest occurrence** to Gemini's suggested timestamp
-4. Targeted JSON search for **precise** word timing (don't read full JSON!)
-5. Refine Gemini's timing with accurate values
-6. Continue with refined shot list
-
-#### Step 1: Fuzzy Search in SRT (Find Approximate Location)
-
-SRT is compact - use it to find which subtitle entry contains the target lyrics:
+## Step 1b: Gemini Audio Analysis (FULL CREATIVE BRIEF)
 
 ```bash
-# Find the sentence/phrase in SRT
-grep -n "מחבר וזה טוב" subtitles.srt
-# Returns: line number and approximate timing
-
-# For repeated lyrics (chorus), find ALL occurrences:
-grep -n "טה טה טה" subtitles.srt | head -5
-# Pick the one closest to Gemini's suggested time
+cd /Users/aviz/.claude/skills/audio-to-video/scripts
+npx ts-node analyze_audio.ts \
+  projects/<slug>/audio/original.mp3 \
+  30 \
+  projects/<slug>/storyboard.md \
+  --request "Listen deeply. Find the most powerful, energetic chorus (20-30 seconds). Describe the song's UNIQUE visual identity: color palette, lighting mood, specific aesthetic details. For each shot: write a vivid cinematic PROMPT that matches what you hear — describe motion, camera move, lighting event, emotion, atmosphere. Make each shot DIFFERENT: vary angles, subjects, energy. NEVER generic — be hyper-specific to THIS song's vibe."
 ```
 
-**Fuzzy matching:** If exact phrase not found, search for key words with partial match (80-90% similarity). Songs have repeated lyrics - always pick the **closest occurrence** to Gemini's time.
+**Gemini's job:** Listen to the music, understand the song's unique identity, build shot-specific prompts that bring THAT song to life. It outputs a storyboard with timing + custom prompts per shot.
 
-#### Step 2: Precise Timing from JSON (Targeted Search)
+---
 
-Once you know the approximate location, search only for those specific words:
+## Step 1c: Align Timing (ElevenLabs → Ground Truth)
+
+Gemini gives approximate timing. Refine using word-level JSON:
 
 ```python
-# NEVER read the full JSON - it's too long!
-# Search for specific words only
 python3 << 'EOF'
 import json
-with open('subtitles', 'r') as f:  # The word-level JSON
+with open('projects/<slug>/subtitles/words', 'r') as f:
     data = json.load(f)
 
-# Target words from Gemini's lyrics for this shot
-keywords = ['מחבר', 'וזה', 'טוב']
-target_time = 7.0  # Gemini's approximate time
+# Explore structure first
+print("Keys:", list(data.keys()))
 
-matches = []
-for w in data['words']:
-    word = w['word'].strip().replace('.', '').replace(',', '')
-    if word in keywords:
-        matches.append((w['start'], w['end'], w['word']))
-
-# Find occurrence closest to target_time
-closest = min(matches, key=lambda x: abs(x[0] - target_time))
-print(f"Shot starts at: {closest[0]:.3f}s")
+# Find words near Gemini's suggested chorus start
+target = <GEMINI_START_SECONDS>
+words = data.get('words', data.get('alignment', {}).get('words', []))
+for w in words:
+    t = w.get('start', w.get('startTime', 0))
+    if abs(t - target) < 8:
+        print(f"{t:.3f}s  {w.get('word','')}")
 EOF
 ```
 
-#### Refinement Rules
-- Gemini timing → approximate guide
-- SRT search → find correct occurrence (especially for repeated lyrics)
-- JSON search → exact millisecond timing
-- Use JSON timing for audio chunk boundaries
+Use the exact word timestamp as the real cut point.
 
-**Key rule:** Show what we hear. Vocals = singer. Guitar solo = guitarist. Drums = drummer.
+---
 
-### 2. Generate 4K Collage (16:9)
+## Step 2: Create Audio Chunks
 
-Use image-generation skill with `-a 16:9` and detailed 3x3 grid prompt:
+Split the chorus into clips of **3-5 seconds each** (LTX 2.3 limit: max 20s per clip):
 
 ```bash
-# ALWAYS use 16:9 aspect ratio!
-npx ts-node generate_poster.ts -d collage.jpg -a 16:9 -q 2K \
-  "A 3x3 grid of 9 camera angles, SEAMLESS with ZERO borders between frames..."
+mkdir -p projects/<slug>/audio/chunks
+# For a 25-second chorus starting at 42.3s, create 6 chunks of ~4s:
+ffmpeg -i projects/<slug>/audio/original.mp3 -ss 42.300 -t 4.0 -y projects/<slug>/audio/chunks/chunk_01.mp3
+ffmpeg -i projects/<slug>/audio/original.mp3 -ss 46.300 -t 4.0 -y projects/<slug>/audio/chunks/chunk_02.mp3
+# etc.
 ```
 
-**CRITICAL prompt rules:**
-- Include "SEAMLESS with ZERO borders between frames"
-- Each frame must show MID-ACTION movement (not static poses)
-- Emphasize "LIVE PERFORMANCE" feel
+---
 
-### 3. Split Collage
+## Step 3: Generate 4K Collage
+
+**Gemini builds this prompt based on the song.** Include the Gemini-generated visual identity in the prompt.
 
 ```bash
-bash scripts/split_collage.sh <collage.jpg> <output_dir>
+mkdir -p projects/<slug>/images/angles
+cd /Users/aviz/.claude/skills/image-generation/scripts
+npx ts-node generate_poster.ts \
+  -d projects/<slug>/images/collage.jpg \
+  -a 16:9 -q 2K \
+  "<GEMINI_GENERATED_COLLAGE_PROMPT>"
 ```
 
-### 4. Trim Audio Chunks (Using Aligned Timing)
+**Collage prompt MUST include:**
+- Artist's specific look (hair, outfit, stage presence)
+- Song's unique color palette
+- Specific lighting design (not generic "concert lights")
+- 9 distinct action frames — each mid-motion, NO static poses
+- "SEAMLESS ZERO borders between frames"
+- Varied subjects: singer, guitarist, drummer, bassist, crowd, silhouette, wide, low-angle, behind-band
 
-**CRITICAL:** Use word-level timing from Step 1a to refine Gemini's suggested boundaries.
+---
 
-Before chunking:
-1. Look at Gemini's shot list with LYRICS
-2. Find those exact words in ElevenLabs JSON
-3. Adjust start/end times to word boundaries
+## Step 4: Split Collage → 9 Angles
 
 ```bash
-# Use ALIGNED timing, not raw Gemini timing
-ffmpeg -i audio.mp3 -ss <aligned_start> -t <duration> -y chunk_N.mp3
+bash /Users/aviz/ai-music-video-maker/.claude/skills/music-video/scripts/split_collage.sh \
+  projects/<slug>/images/collage.jpg \
+  projects/<slug>/images/angles/
 ```
 
-Example alignment:
-- Gemini says: Shot starts at 0:07 with lyrics "מחבר וזה"
-- ElevenLabs shows: "מחבר" starts at 7.179
-- Use 7.179 as the real start time
+Creates `angle_1.jpg` through `angle_9.jpg`
 
-### 5. Generate Video Clips
+---
 
-For each shot, use audio-to-video:
+## Step 5: Generate Video Clips (LTX 2.3)
+
 ```bash
-npx ts-node generate.ts --audio chunk.mp3 --image angle_X.jpg -d clip.mp4 "Description"
+mkdir -p projects/<slug>/videos/clips
+cd /Users/aviz/.claude/skills/audio-to-video/scripts
+
+npx ts-node generate.ts \
+  --audio projects/<slug>/audio/chunks/chunk_01.mp3 \
+  --image projects/<slug>/images/angles/angle_2.jpg \
+  -d projects/<slug>/videos/clips/shot_01.mp4 \
+  "<GEMINI_GENERATED_SHOT_PROMPT_FOR_CHUNK_01>"
 ```
 
-**Limit:** LTX max 481 frames (~19 sec at 25fps).
+**Rules:**
+- Use Gemini's shot-specific prompts (they know the song)
+- NEVER repeat same angle in consecutive shots
+- Each prompt must describe: **subject action + camera movement + lighting event + emotion**
+- Rotate through diverse angles: singer → wide → instrument → crowd → silhouette → low-angle
 
-### 6. Merge Clips (Smooth Audio)
+---
 
-**CRITICAL:** Don't concatenate audio chunks - use continuous original audio to avoid choppy sound.
+## Step 6: Merge with Continuous Audio
 
 ```bash
-# Step 1: Extract continuous audio segment from original
-ffmpeg -i original.mp3 -ss 72.5 -t 29.5 -y segment_audio.mp3
+# Concat list
+ls projects/<slug>/videos/clips/shot_*.mp4 | sort | \
+  awk '{print "file \047"$0"\047"}' > /tmp/concat_<slug>.txt
 
-# Step 2: Create concat list for videos
-cat > concat.txt << EOF
-file 'clips/shot_01.mp4'
-file 'clips/shot_02.mp4'
-...
-EOF
+# Join videos (no audio)
+ffmpeg -f concat -safe 0 -i /tmp/concat_<slug>.txt -an -c:v copy \
+  projects/<slug>/videos/video_only.mp4
 
-# Step 3: Concatenate videos WITHOUT audio
-ffmpeg -f concat -safe 0 -i concat.txt -an -c:v copy video_only.mp4
+# Extract original continuous audio for the segment
+CHORUS_START=<aligned_start>
+TOTAL_DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 \
+  projects/<slug>/videos/video_only.mp4)
+ffmpeg -i projects/<slug>/audio/original.mp3 \
+  -ss $CHORUS_START -t $TOTAL_DUR \
+  -y projects/<slug>/audio/chorus_audio.mp3
 
-# Step 4: Mux video with continuous audio + FADE OUT (smooth endings)
-# IMPORTANT: Always add 2-second fade out for segment videos
-DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 video_only.mp4)
-FADE_START=$(echo "$DURATION - 2" | bc)
-
-ffmpeg -i video_only.mp4 -i segment_audio.mp3 \
+# Mux + fade out
+FADE_START=$(echo "$TOTAL_DUR - 2" | bc)
+ffmpeg -i projects/<slug>/videos/video_only.mp4 \
+  -i projects/<slug>/audio/chorus_audio.mp3 \
   -vf "fade=t=out:st=${FADE_START}:d=2" \
   -af "afade=t=out:st=${FADE_START}:d=2" \
-  -c:v libx264 -c:a aac -shortest final.mp4
+  -c:v libx264 -c:a aac -shortest \
+  projects/<slug>/videos/merged.mp4
 ```
 
-**FADE OUT is CRITICAL** for segment videos - prevents abrupt endings.
+---
 
-This approach ensures:
-- Video clips sync to their individual audio during generation
-- Final merge uses ONE continuous audio track (no seams)
-- No choppy sound from audio chunk boundaries
-- **Smooth 2-second fade out at the end**
+## Step 7: Remotion Lyrics Overlay (MANDATORY)
 
-### 7. Add Lyrics Overlay (DEFAULT) - Use `lyrics-overlay` Skill
-
-**This step is ON by default.** Skip only if user explicitly says "no titles".
-
-#### Style Selection Guide
-
-Choose style based on song genre, mood, and energy:
-
-| Style | Component | Best For | When to Use |
-|-------|-----------|----------|-------------|
-| `karaoke` | LyricsOverlay | Pop, dance, singalong | **Default** - energetic, accessible |
-| `minimal` | LyricsOverlay | Ballads, acoustic | Clean, don't distract from visuals |
-| `fade` | LyricsOverlay | Narration, spoken word | Gentle, smooth |
-| `neon` | LyricsOverlayNeon | Electronic, EDM, synthwave | Cyberpunk, futuristic, high-energy |
-| `cinematic` | LyricsOverlayCinematic | Epic, rock, trailers | **CENTER** - dramatic, powerful, movie-like |
-| `bounce` | LyricsOverlayBounce | Kids, fun, upbeat | Playful, colorful, joyful |
-| `typewriter` | LyricsOverlayTypewriter | Indie, retro, storytelling | Nostalgic, intimate, artistic |
-
-**Decision Logic:**
-```
-IF genre == electronic/EDM → neon
-ELSE IF genre == rock/epic/powerful → cinematic (CENTER, large text)
-ELSE IF genre == kids/fun → bounce
-ELSE IF genre == indie/retro → typewriter
-ELSE IF energy == low (ballad) → minimal
-ELSE → karaoke (default)
-```
-
-#### Quick Usage
-
-1. Copy video + subtitles JSON to Remotion public folder:
+### Setup
 ```bash
-cp videos/final.mp4 ~/remotion-assistant/public/videos/<project>.mp4
-cp subtitles ~/remotion-assistant/public/lyrics/<project>.json
+REMOTION=/Users/aviz/remotion-assistant
+SLUG=<slug>
+
+# Copy assets
+cp projects/$SLUG/videos/merged.mp4 $REMOTION/public/videos/${SLUG}.mp4
+cp projects/$SLUG/subtitles/words $REMOTION/public/lyrics/${SLUG}.json
 ```
 
-2. Create temporary composition in Remotion:
+### Choose style based on song genre:
+| Genre | Style | Component |
+|-------|-------|-----------|
+| Pop, dance | `karaoke` | `LyricsOverlay` |
+| Synthwave, EDM | `neon` | `LyricsOverlayNeon` |
+| Dark, dramatic | `cinematic` | `LyricsOverlayCinematic` |
+| Fun, upbeat | `bounce` | `LyricsOverlayBounce` |
+| Indie, retro | `typewriter` | `LyricsOverlayTypewriter` |
+
+### Create composition
 ```typescript
-// ~/remotion-assistant/src/compositions/TempLyrics.tsx
-import { LyricsOverlayCinematic, parseElevenLabsTranscript } from './LyricsOverlayCinematic';
+// $REMOTION/src/compositions/Temp_<Slug>.tsx
+import { LyricsOverlay, parseElevenLabsTranscript, shiftLyricsTiming } from './LyricsOverlay';
 import { staticFile } from 'remotion';
 
-const transcript = require('../../public/lyrics/<project>.json');
+const transcript = require('../../public/lyrics/<slug>.json');
 
-export const TempLyrics: React.FC = () => {
-  const lyrics = parseElevenLabsTranscript(transcript, {
-    maxWordsPerLine: 5,
-    lineGapThreshold: 0.6
+export const Temp_<Slug>: React.FC = () => {
+  const raw = parseElevenLabsTranscript(transcript, {
+    maxWordsPerLine: 6,
+    lineGapThreshold: 0.8,
   });
+  // Shift timing to match chorus segment offset
+  const lyrics = shiftLyricsTiming(raw, -<CHORUS_START_SECONDS>);
 
   return (
-    <LyricsOverlayCinematic
-      videoSrc={staticFile('videos/<project>.mp4')}
+    <LyricsOverlay
+      videoSrc={staticFile('videos/<slug>.mp4')}
       lyrics={lyrics}
-      fontSize={90}
-      accentColor="#FF0000"  // Red for rock
-      useOffthreadVideo={true}
+      style="karaoke"
+      fontSize={72}
     />
   );
 };
 ```
 
-3. Register in Root.tsx, render, then **cleanup**:
+### Register in Root.tsx, render, then cleanup
 ```bash
-cd ~/remotion-assistant
-npx remotion render TempLyrics out/final_with_lyrics.mp4
+# Add to Root.tsx (under existing compositions)
+cd $REMOTION
+npx remotion render Temp_<Slug> out/${SLUG}_lyrics.mp4
 
-# CLEANUP: Remove temp composition after render
-rm src/compositions/TempLyrics.tsx
-# Remove import and Composition from Root.tsx (manual or sed)
+# Copy result
+cp out/${SLUG}_lyrics.mp4 /Users/aviz/ai-music-video-maker/projects/$SLUG/videos/final.mp4
+
+# Cleanup: remove temp composition + public assets
+rm src/compositions/Temp_<Slug>.tsx
+rm public/videos/${SLUG}.mp4
+rm public/lyrics/${SLUG}.json
+# Remove the Composition entry from Root.tsx
 ```
 
-**IMPORTANT:** Keep Remotion clean - only template components stay permanently.
-After each project render, delete the project-specific composition file.
+---
 
-#### For Segment Videos: Offset Timing
+## Project Structure
 
-If video is extracted from longer song:
-```typescript
-import { shiftLyricsTiming } from '../utils/lyricsParser';
-const offsetLyrics = shiftLyricsTiming(lyrics, -105); // Shift back by segment start
+```
+projects/<slug>/
+├── audio/
+│   ├── original.mp3
+│   ├── chorus_audio.mp3
+│   └── chunks/chunk_01.mp3 ... chunk_N.mp3
+├── subtitles/
+│   ├── words          (word-level JSON)
+│   └── words.srt
+├── images/
+│   ├── collage.jpg    (4K 3x3)
+│   └── angles/
+│       ├── angle_1.jpg ... angle_9.jpg
+├── videos/
+│   ├── clips/shot_01.mp4 ... shot_N.mp4
+│   ├── video_only.mp4
+│   ├── merged.mp4
+│   └── final.mp4      ← FINAL OUTPUT
+└── storyboard.md      (Gemini's full analysis + prompts)
 ```
 
-**See full documentation:** `.claude/skills/lyrics-overlay/SKILL.md`
+---
 
-## Storyboard Output Format
+## Key Principles
 
-Gemini outputs readable markdown (not JSON) with **VIDEO PROMPT** for each shot:
+**Timing:** ElevenLabs word timestamps > Gemini timing. Always verify with JSON.
 
-```markdown
-# MUSIC VIDEO STORYBOARD
+**Visuals:** Gemini hears the song → Gemini designs the visual identity. Don't use generic prompts.
 
-## Audio Events Timeline
-**Vocals:**
-- 0:32-0:48 - Chorus vocals, strong declaration of freedom
+**Variety:** Never same angle twice in a row. Rotate: closeup → wide → instrument → crowd → silhouette.
 
-**Guitar highlights:**
-- 1:07-1:24 - Guitar solo
+**Motion:** Every video prompt must include: what moves + how camera moves + lighting event.
 
-## RECOMMENDED SEGMENT (for partial video)
-- **Start at:** 0:32 (chorus begins)
-- **Why:** Clear vocals, high energy
+**Audio:** Always mux from original continuous audio (no chunk seams). Fade out 2s.
 
-## Shot List
-Format: [START-END] ANGLE_X - Description | AUDIO REASON | LYRICS: "lyrics" | PROMPT: "video prompt"
-
-[0:00-0:04] ANGLE_2 - Singer close-up | Vocals start | LYRICS: "וגם אני" | PROMPT: "LIVE CONCERT: Singer closeup, SINGING with mouth moving, veins in neck, intense emotion"
-[0:04-0:06] ANGLE_6 - Crowd shot | Energy peak | PROMPT: "LIVE CONCERT: Crowd jumping, hands in air, stage lights pulsing"
-...
-```
-
-**PROMPT field is CRITICAL** - Used directly by audio-to-video for each clip generation.
-
-## Limits
-
-- **LTX max frames:** 481 (~19 sec at 25fps)
-- **9 camera angles** from single collage
-- **Recommended shot length:** 2-5 seconds
+---
 
 ## Dependencies
 
-- `@google/genai` - Gemini audio analysis
-- `fal-ai` - LTX video generation
-- `ffmpeg` - Audio/video processing
-- `imagemagick` - Image splitting
-- Global `image-generation` skill
-- Project-scoped `audio-to-video` skill
+- `yt-dlp` — YouTube download
+- `ffmpeg` — audio/video processing
+- `imagemagick` — collage splitting
+- `ElevenLabs` — word-level transcription (`transcribe` skill)
+- `Gemini` — audio analysis + prompt generation (`audio-to-video/scripts/analyze_audio.ts`)
+- `fal.ai LTX 2.3` — video generation (`fal-ai/ltx-2.3/audio-to-video`)
+- `Remotion` — lyrics overlay (`~/remotion-assistant`)

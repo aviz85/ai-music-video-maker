@@ -121,14 +121,14 @@ If making a shorter video, USE THIS SECTION:
 9. ANGLE_9: [Behind band POV details]
 
 ## Shot List
-Format: [START-END] ANGLE_X - Description | AUDIO REASON | LYRICS: "exact lyrics heard"
+Format: [START-END] ANGLE_X - Description | AUDIO REASON | LYRICS: "exact lyrics heard" | PROMPT: "video generation prompt"
 
-**CRITICAL: Include LYRICS field for EVERY shot where vocals are heard. Write the EXACT Hebrew/English words sung during that shot. This is essential for timing alignment.**
+**CRITICAL: Include LYRICS field for EVERY shot where vocals are heard. Write the EXACT words sung during that shot. This is essential for timing alignment.**
+**CRITICAL: Include PROMPT field for EVERY shot. This is the exact text passed to LTX 2.3 video generation.**
 
-[0:00-0:03] ANGLE_1 - Wide establishing shot | Full band playing intro | LYRICS: (instrumental)
-[0:03-0:05] ANGLE_4 - Drummer close-up | Drum fill prominent here | LYRICS: (instrumental)
-[0:05-0:09] ANGLE_2 - Singer face | Vocals begin here | LYRICS: "הכל מתחיל מכאן"
-[0:09-0:12] ANGLE_3 - Guitarist hands | Guitar riff takes over | LYRICS: (instrumental)
+[0:00-0:03] ANGLE_1 - Wide establishing shot | Full band playing intro | LYRICS: (instrumental) | PROMPT: "LIVE CONCERT: Full band on stage, wide shot, dramatic lighting, crowd energy, 4K cinematic"
+[0:03-0:05] ANGLE_4 - Drummer close-up | Drum fill prominent here | LYRICS: (instrumental) | PROMPT: "LIVE CONCERT: Drummer close-up, sticks hitting cymbals, intense expression, motion blur"
+[0:05-0:09] ANGLE_2 - Singer face | Vocals begin here | LYRICS: "the exact words sung" | PROMPT: "LIVE CONCERT: Singer close-up, mouth open singing, microphone in hand, stage lights, emotional"
 ... continue for full ${audioDuration} seconds ...
 
 ## RULES
@@ -136,6 +136,7 @@ Format: [START-END] ANGLE_X - Description | AUDIO REASON | LYRICS: "exact lyrics
 - Shot length: 2-5 seconds each (vary based on energy - faster cuts for high energy, longer for emotional moments)
 - EVERY shot must have AUDIO REASON explaining why that angle
 - EVERY shot with vocals MUST include LYRICS field with exact words
+- EVERY shot MUST include PROMPT field for LTX 2.3 video generation
 - Show what we HEAR - vocals = singer, guitar = guitarist, etc.
 - Cut on beat changes
 - More cuts during high energy sections
@@ -170,7 +171,7 @@ GOOD examples (DO THIS):
   console.log(`Duration to analyze: ${audioDuration} seconds`);
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash",
     contents: [
       {
         role: "user",

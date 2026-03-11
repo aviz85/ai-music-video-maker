@@ -1,7 +1,6 @@
 {
   "name": "audio-to-video",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "generate": "npx ts-node generate.ts"
   },

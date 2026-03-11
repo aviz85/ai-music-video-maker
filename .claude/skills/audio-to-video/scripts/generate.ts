@@ -1,4 +1,4 @@
-// Audio to Video Generation using fal.ai LTX-2 19B
+// Audio to Video Generation using fal.ai LTX-2.3
 // npm install @fal-ai/client dotenv
 
 import { fal } from '@fal-ai/client';
@@ -20,6 +20,7 @@ interface Args {
   quality: string;
   camera: string;
   matchAudioLength: boolean;
+  guidanceScale?: number;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -57,6 +58,8 @@ function parseArgs(argv: string[]): Args {
       args.camera = argv[++i];
     } else if (arg === '--no-match-length') {
       args.matchAudioLength = false;
+    } else if (arg === '--guidance-scale') {
+      args.guidanceScale = parseFloat(argv[++i]);
     } else if (!arg.startsWith('-')) {
       promptParts.push(arg);
     }
@@ -90,20 +93,45 @@ async function uploadFile(filePath: string): Promise<string> {
   return url;
 }
 
+// Map old size names to LTX 2.3 aspect_ratio
+function sizeToAspectRatio(size: string): string {
+  const map: Record<string, string> = {
+    'landscape_16_9': '16:9',
+    'landscape_4_3': '4:3',
+    'portrait_16_9': '9:16',
+    'portrait_4_3': '3:4',
+    'square_hd': '1:1',
+    'square': '1:1',
+    'auto': 'auto',
+  };
+  return map[size] || '16:9';
+}
+
+// Map quality to LTX 2.3 resolution
+function qualityToResolution(quality: string): string {
+  const map: Record<string, string> = {
+    'low': '1080p',
+    'medium': '1080p',
+    'high': '1080p',
+    'maximum': '1440p',
+  };
+  return map[quality] || '1080p';
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
   // Validation
-  if (!args.audioPath) {
-    console.error('Error: --audio is required');
+  if (!args.audioPath && !args.imagePath) {
+    console.error('Error: --audio or --image is required');
     process.exit(1);
   }
   if (!args.destination) {
     console.error('Error: --destination (-d) is required');
     process.exit(1);
   }
-  if (!args.prompt) {
-    console.error('Error: prompt is required');
+  if (!args.prompt && !args.audioPath) {
+    console.error('Error: prompt is required when no audio is provided');
     process.exit(1);
   }
   if (!process.env.FAL_KEY) {
@@ -114,58 +142,78 @@ async function main() {
   // Configure fal
   fal.config({ credentials: process.env.FAL_KEY });
 
-  console.log('Audio to Video Generation');
-  console.log('=========================');
-  console.log(`Audio: ${args.audioPath}`);
+  const aspectRatio = sizeToAspectRatio(args.size);
+  const resolution = qualityToResolution(args.quality);
+
+  console.log('Audio to Video Generation - LTX 2.3');
+  console.log('=====================================');
+  if (args.audioPath) console.log(`Audio: ${args.audioPath}`);
   if (args.imagePath) console.log(`Image: ${args.imagePath}`);
   if (args.endImagePath) console.log(`End Image: ${args.endImagePath}`);
-  console.log(`Size: ${args.size}`);
+  console.log(`Size: ${args.size} → aspect_ratio: ${aspectRatio}`);
+  console.log(`Quality: ${args.quality} → resolution: ${resolution}`);
   console.log(`FPS: ${args.fps}`);
-  console.log(`Quality: ${args.quality}`);
-  console.log(`Camera: ${args.camera}`);
-  console.log(`Match audio length: ${args.matchAudioLength}`);
-  console.log(`Prompt: "${args.prompt}"`);
+  if (args.prompt) console.log(`Prompt: "${args.prompt}"`);
   console.log('');
 
   // Upload files
   console.log('Uploading files...');
-  const audioUrl = await uploadFile(args.audioPath);
+  const audioUrl = args.audioPath ? await uploadFile(args.audioPath) : undefined;
   const imageUrl = args.imagePath ? await uploadFile(args.imagePath) : undefined;
   const endImageUrl = args.endImagePath ? await uploadFile(args.endImagePath) : undefined;
 
-  // Build request
-  const input: Record<string, any> = {
-    prompt: args.prompt,
-    audio_url: audioUrl,
-    match_audio_length: args.matchAudioLength,
-    video_size: args.size,
-    fps: args.fps,
-    video_quality: args.quality,
-    video_output_type: 'X264 (.mp4)',
-    enable_prompt_expansion: true,
-    use_multiscale: true,
-  };
+  let endpoint: string;
+  let input: Record<string, any>;
 
-  if (imageUrl) input.image_url = imageUrl;
-  if (endImageUrl) input.end_image_url = endImageUrl;
-  if (args.camera !== 'none') input.camera_lora = args.camera;
+  if (audioUrl) {
+    // Audio-to-video: LTX 2.3 audio-to-video endpoint (2-20 sec audio)
+    endpoint = 'fal-ai/ltx-2.3/audio-to-video';
+    input = {
+      audio_url: audioUrl,
+    };
+    if (args.prompt) input.prompt = args.prompt;
+    if (imageUrl) input.image_url = imageUrl;
+    // guidance_scale: default 5 without image, 9 with image
+    if (args.guidanceScale !== undefined) {
+      input.guidance_scale = args.guidanceScale;
+    } else if (imageUrl) {
+      input.guidance_scale = 9;
+    }
+  } else {
+    // Image-to-video: LTX 2.3 image-to-video endpoint
+    endpoint = 'fal-ai/ltx-2.3/image-to-video';
+    input = {
+      image_url: imageUrl,
+      prompt: args.prompt,
+      aspect_ratio: aspectRatio,
+      resolution: resolution,
+      fps: args.fps,
+      generate_audio: false,
+    };
+    if (endImageUrl) input.end_image_url = endImageUrl;
+    if (args.guidanceScale !== undefined) input.guidance_scale = args.guidanceScale;
+  }
+
+  console.log(`Using endpoint: ${endpoint}`);
+  console.log('Input:', JSON.stringify(input, null, 2));
 
   // Generate video
-  console.log('Generating video...');
-  const result = await fal.subscribe('fal-ai/ltx-2-19b/distilled/audio-to-video', {
+  console.log('\nGenerating video...');
+  const result = await fal.subscribe(endpoint, {
     input,
     logs: true,
     onQueueUpdate: (update) => {
       if (update.status === 'IN_PROGRESS' && update.logs) {
-        update.logs.map((log) => log.message).forEach(console.log);
+        update.logs.map((log: any) => log.message).forEach(console.log);
       }
     },
   });
 
   // Download result
-  if (result.data?.video?.url) {
-    console.log(`\nDownloading from: ${result.data.video.url}`);
-    const response = await fetch(result.data.video.url);
+  const videoUrl = result.data?.video?.url || result.data?.url;
+  if (videoUrl) {
+    console.log(`\nDownloading from: ${videoUrl}`);
+    const response = await fetch(videoUrl);
     const buffer = Buffer.from(await response.arrayBuffer());
 
     // Ensure destination directory exists
@@ -177,8 +225,9 @@ async function main() {
     fs.writeFileSync(args.destination, buffer);
     console.log(`\nVideo saved to: ${args.destination}`);
 
-    if (result.data.video.duration) {
-      console.log(`Duration: ${result.data.video.duration}s`);
+    const duration = result.data?.video?.duration || result.data?.duration;
+    if (duration) {
+      console.log(`Duration: ${duration}s`);
     }
   } else {
     console.error('No video generated');
