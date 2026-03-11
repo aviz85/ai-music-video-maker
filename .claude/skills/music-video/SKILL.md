@@ -57,7 +57,7 @@ npx ts-node analyze_audio.ts \
   projects/<slug>/audio/original.mp3 \
   30 \
   projects/<slug>/storyboard.md \
-  --request "Listen deeply. Find the most powerful, energetic chorus (20-30 seconds). Describe the song's UNIQUE visual identity: color palette, lighting mood, specific aesthetic details. For each shot: write a vivid cinematic PROMPT that matches what you hear — describe motion, camera move, lighting event, emotion, atmosphere. Make each shot DIFFERENT: vary angles, subjects, energy. NEVER generic — be hyper-specific to THIS song's vibe."
+  --request "Listen deeply. Find the most powerful, energetic chorus (20-30 seconds). Describe the song's UNIQUE visual identity: color palette, lighting mood, specific aesthetic details. SINGER-FIRST RULE: 60-70% of shots MUST be the singer (ANGLE_2 or ANGLE_8). Only cut to other instruments/crowd during clear instrumental breaks with no vocals. For ALL singer shots, the prompt MUST include 'mouth open singing, lip sync, close-up face' so LTX 2.3 generates synchronized mouth movement. For each shot: write a vivid cinematic PROMPT. Pattern: singer (4s) → brief cutaway (2s) → singer (4s) → brief cutaway (2s). NEVER generic — be hyper-specific to THIS song's vibe."
 ```
 
 **Gemini's job:** Listen to the music, understand the song's unique identity, build shot-specific prompts that bring THAT song to life. It outputs a storyboard with timing + custom prompts per shot.
@@ -154,10 +154,13 @@ npx ts-node generate.ts \
 ```
 
 **Rules:**
-- Use Gemini's shot-specific prompts (they know the song)
+- **SINGER-FIRST: 60-70% of shots must be singer (ANGLE_2 or ANGLE_8)** — when vocals are heard, always use singer angle
+- Only cut away to instruments/crowd during clear instrumental breaks (no vocals)
 - NEVER repeat same angle in consecutive shots
 - Each prompt must describe: **subject action + camera movement + lighting event + emotion**
-- Rotate through diverse angles: singer → wide → instrument → crowd → silhouette → low-angle
+- Singer shot prompts MUST include: **"mouth open singing, lip sync, close-up face"** — this drives LTX audio sync
+- Non-singer shots are brief (2-3s) transitions between singer shots, not main content
+- Pattern: singer (4s) → wide/instrument (2s) → singer (4s) → crowd (2s) → singer (4s)
 
 ---
 
