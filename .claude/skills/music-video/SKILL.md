@@ -188,6 +188,13 @@ ffmpeg -i projects/<slug>/videos/video_only.mp4 \
   -af "afade=t=out:st=${FADE_START}:d=2" \
   -c:v libx264 -c:a aac -shortest \
   projects/<slug>/videos/merged.mp4
+
+# CRITICAL for Remotion: re-encode with all keyframes (g=1) for frame-accurate seeking
+# Without this, Remotion will produce choppy output
+ffmpeg -i projects/<slug>/videos/merged.mp4 \
+  -c:v libx264 -g 1 -keyint_min 1 -sc_threshold 0 \
+  -c:a copy \
+  -y projects/<slug>/videos/merged_remotion.mp4
 ```
 
 ---
@@ -199,8 +206,8 @@ ffmpeg -i projects/<slug>/videos/video_only.mp4 \
 REMOTION=/Users/aviz/remotion-assistant
 SLUG=<slug>
 
-# Copy assets
-cp projects/$SLUG/videos/merged.mp4 $REMOTION/public/videos/${SLUG}.mp4
+# Copy assets — use merged_remotion.mp4 (all-keyframe version for Remotion seeking)
+cp projects/$SLUG/videos/merged_remotion.mp4 $REMOTION/public/videos/${SLUG}.mp4
 cp projects/$SLUG/subtitles/words $REMOTION/public/lyrics/${SLUG}.json
 ```
 
@@ -222,13 +229,24 @@ import { staticFile } from 'remotion';
 
 const transcript = require('../../public/lyrics/<slug>.json');
 
+const CHORUS_START = <CHORUS_START_SECONDS>;
+
 export const Temp_<Slug>: React.FC = () => {
-  const raw = parseElevenLabsTranscript(transcript, {
+  // CRITICAL: filter to only words at/after chorus start BEFORE parsing
+  // Without this, pre-chorus words get clamped to t=0 and all appear at frame 0
+  const filteredTranscript = {
+    ...transcript,
+    words: (transcript.words || []).filter((w: any) => {
+      const t = w.start ?? w.startTime ?? 0;
+      return t >= CHORUS_START;
+    }),
+  };
+
+  const raw = parseElevenLabsTranscript(filteredTranscript, {
     maxWordsPerLine: 6,
     lineGapThreshold: 0.8,
   });
-  // Shift timing to match chorus segment offset
-  const lyrics = shiftLyricsTiming(raw, -<CHORUS_START_SECONDS>);
+  const lyrics = shiftLyricsTiming(raw, -CHORUS_START);
 
   return (
     <LyricsOverlay
