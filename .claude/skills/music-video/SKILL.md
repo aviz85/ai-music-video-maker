@@ -161,11 +161,27 @@ npx ts-node generate.ts \
 
 ---
 
+## Step 5.5: Normalize FPS (24fps → 25fps) — MANDATORY
+
+**LTX 2.3 outputs 24fps. Remotion renders at 25fps. Frame mismatch = choppy video. Fix BEFORE concat.**
+
+```bash
+mkdir -p projects/<slug>/videos/clips_25fps
+for f in projects/<slug>/videos/clips/shot_*.mp4; do
+  name=$(basename "$f")
+  ffmpeg -i "$f" -r 25 -c:v libx264 -preset fast -crf 18 -an \
+    projects/<slug>/videos/clips_25fps/$name -y
+done
+# Always use clips_25fps/ for concatenation — never clips/
+```
+
+---
+
 ## Step 6: Merge with Continuous Audio
 
 ```bash
-# Concat list
-ls projects/<slug>/videos/clips/shot_*.mp4 | sort | \
+# Concat list — use clips_25fps/
+ls projects/<slug>/videos/clips_25fps/shot_*.mp4 | sort | \
   awk '{print "file \047"$0"\047"}' > /tmp/concat_<slug>.txt
 
 # Join videos (no audio)
