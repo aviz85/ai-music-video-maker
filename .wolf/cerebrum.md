@@ -19,7 +19,7 @@
 - **Collage = consistency.** One 4K 3x3 generation, ImageMagick `magick` (v7) split via `split_collage.sh`. Separate images = 9 different concerts.
 - **Audio has two jobs.** Per-shot chunks drive LTX motion; final mux uses one continuous extract from `original.mp3` (`-an` concat, then mux + 2s fade).
 - **Singer-first (post-85398b0):** 60–70% ANGLE_2/8. Vocals → singer. Instruments/crowd only on breaks. Singer prompt must demand lip sync.
-- **Live video model:** `fal-ai/ltx-2.3/audio-to-video` (audio 2–20s). Image-only: `fal-ai/ltx-2.3/image-to-video`. Keys from `~/.claude/skills/image-generation/scripts/.env`.
+- **Live video model:** `lightricks/ltx-2.5/audio-to-video/pro` (audio 2–10s Pro). Image-only: `lightricks/ltx-2.5/image-to-video/pro`. Keys from `~/.claude/skills/image-generation/scripts/.env`. ~$0.17/s at 1080p.
 - **Remotion lives in `~/remotion-assistant`.** Copy templates from `.claude/skills/lyrics-overlay/remotion-templates/`. Cleanup Temp_* compositions after render.
 - **Lyrics offset:** filter `words` to `>= CHORUS_START` then `shiftLyricsTiming(..., -CHORUS_START)`. `Math.max(0, …)` in the shifter would pin pre-chorus words to 0 if you skip the filter.
 - **Scripts hardcode Aviz home paths** (`/Users/aviz/.claude/skills/...`). Project also has a local `audio-to-video`; music-video skill still points some steps at the global copies.
@@ -34,7 +34,9 @@
 - [2026-02] Do not write static LTX prompts ("singer on stage"). Describe MOTION + camera + lighting event.
 - [2026-02] Do not hold clips >15s. 2–5s. Never same subject consecutively.
 - [2026-02] Remotion: always all-keyframe remux (`-g 1`) and `fps={24}`. Never leave pre-chorus words in the transcript.
-- [2026-08] Do not follow `docs/blog/` or `docs/03_tools_and_apis.md` for model names/fps/endpoints. Skills + scripts are current (LTX 2.3, 24fps).
+- [2026-08] Do not follow `docs/blog/` or `docs/03_tools_and_apis.md` for model names/fps/endpoints. Skills + scripts are current (LTX 2.5 Pro, 24fps).
+- [2026-08] LTX 2.5 Pro A2V returns ~0.29s shorter than the input audio. Pad/clone last frame to the chunk duration before concat or later shots drift.
+- [2026-08] fal CDN download can flake after a successful generate — retry fetch; the video URL is still valid.
 - [2026-08] Do not use project-local `.claude/skills/transcribe` — deleted. Global `~/.claude/skills/transcribe`.
 
 ## Decision Log
@@ -43,5 +45,6 @@
 - Gemini creative + ElevenLabs timing over one-model-does-both → only way cuts land on words.
 - Continuous audio mux over concat chunks → kills boundary clicks.
 - LTX 2.3 upgrade (03fac17) + native 24fps Remotion (9c3e8b5) + all-keyframe remux (acb4d50) + singer-first (85398b0).
+- LTX 2.5 Pro (2026-08-17): default A2V endpoint is `lightricks/ltx-2.5/audio-to-video/pro`. Tate-tetaher recreated with same images; old vs new live in `videos/compare/`.
 - `projects/*` gitignored (595a3b4) so media stays local; only `example-project/` is the template.
 - song-research extracted as pre-prod so Gemini listen + official lyrics + artist refs happen before the expensive LTX loop.

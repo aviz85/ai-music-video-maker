@@ -4,14 +4,14 @@
 
 Skill-orchestrated pipeline: one audio file → 20–30s multi-camera concert video.
 
-**Trust the skills, not `docs/blog/`.** The blog is a Feb 2026 retrospective (LTX-2 19B / 25fps). Live pipeline is LTX 2.3 / 24fps / singer-first.
+**Trust the skills, not `docs/blog/`.** The blog is a Feb 2026 retrospective (LTX-2 19B / 25fps). Live pipeline is LTX 2.5 Pro / 24fps / singer-first.
 
 ## How a video gets made
 
 ```
 YouTube/audio → ElevenLabs words (WHEN) → Gemini listens (WHAT + prompts)
 → Claude aligns lyrics to timestamps → 4K 3x3 collage → ImageMagick split
-→ LTX 2.3 clips (audio-driven) → ffmpeg merge + continuous original audio
+→ LTX 2.5 Pro clips (audio-driven) → ffmpeg merge + continuous original audio
 → Remotion lyrics (all-keyframe + fps=24 + offset-filtered words)
 ```
 
@@ -23,7 +23,7 @@ Entry skill: `.claude/skills/music-video/SKILL.md`
 |-------|------|
 | `music-video` | Full pipeline orchestrator |
 | `song-research` | Pre-prod: refs + official lyrics + Gemini listen |
-| `audio-to-video` | LTX 2.3 CLI (`generate.ts`) + Gemini storyboard (`analyze_audio.ts`) |
+| `audio-to-video` | LTX 2.5 Pro CLI (`generate.ts`) + Gemini storyboard (`analyze_audio.ts`) |
 | `lyrics-overlay` | 7 Remotion styles, copy into `~/remotion-assistant` |
 | `remotion-render` / `video-common` / `remotion-best-practices` | Render + shared Remotion knowledge |
 
@@ -40,11 +40,11 @@ Keys live in `~/.claude/skills/image-generation/scripts/.env` (`FAL_KEY`, `GEMIN
 2. **Singer-first:** 60–70% of shots are ANGLE_2 or ANGLE_8 while vocals are audible. Cutaways only on instrumental breaks. Singer prompts must include `mouth open singing, lip sync, close-up face`.
 3. **Never same subject twice in a row.** Singer → wide/crowd/silhouette → singer. Consecutive singer angles = jump cut.
 4. **One collage, then split.** Never generate 9 separate images. Prompt must say `SEAMLESS ZERO borders` and describe all 9 frames mid-action.
-5. **Clips 2–5s.** LTX 2.3 max ~20s; quality dies after ~15s.
+5. **Clips 2–5s.** LTX 2.5 Pro max 10s per clip.
 6. **Continuous original audio on the final mux.** Clip audio is only for motion sync. 2s fade out.
 7. **Remotion: three landmines**
    - Re-encode `merged.mp4` with `-g 1 -keyint_min 1` → `merged_remotion.mp4` or seeking is choppy
-   - `fps={24}` to match LTX 2.3 (do not 25)
+   - `fps={24}` to match LTX 2.5 (do not 25)
    - Filter words to `t >= CHORUS_START` *before* parse, then `shiftLyricsTiming(raw, -CHORUS_START)`. Unfiltered words clamp to t=0 and pile up on frame 0.
 
 ## Camera bible (fixed 9)
@@ -72,7 +72,7 @@ Default ~$1.44 (LTX is ~90%). Cheap mode ~$1.20. See `PRICING.md`.
 ## Drift / leftovers (don't "fix" unless asked)
 
 - `analyze_audio.ts` still calls `gemini-2.0-flash` (docs say Gemini 3 Flash)
-- `generate.ts` default `--fps 25` is only used on the image-to-video path; A2V ignores fps
+- `generate.ts` default `--fps 24` is only used on the image-to-video path; A2V ignores fps
 - Root `skills/` is an old snapshot of image-generation + transcribe
 - `.claude/skills/remotion-lyrics/` is empty
 - Project-local transcribe skill was deleted; use the global one

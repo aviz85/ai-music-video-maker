@@ -12,7 +12,7 @@ Generate professional AI music videos from a YouTube URL or audio file. The pipe
 
 ```
 YouTube URL → MP3 → ElevenLabs (word-level timing) → Gemini (listen + build visual plan)
-→ Aligned Chorus Cut (20-30s) → 4K Collage → Split 9 Angles → LTX 2.3 Clips → Merge → Remotion Lyrics → Final MP4
+→ Aligned Chorus Cut (20-30s) → 4K Collage → Split 9 Angles → LTX 2.5 Pro Clips → Merge → Remotion Lyrics → Final MP4
 ```
 
 ## Quick Start
@@ -52,12 +52,12 @@ Outputs: `subtitles/words` (JSON with word timestamps) + `subtitles/words.srt`
 ## Step 1b: Gemini Audio Analysis (FULL CREATIVE BRIEF)
 
 ```bash
-cd /Users/aviz/.claude/skills/audio-to-video/scripts
+cd /Users/aviz/ai-music-video-maker/.claude/skills/audio-to-video/scripts
 npx ts-node analyze_audio.ts \
   projects/<slug>/audio/original.mp3 \
   30 \
   projects/<slug>/storyboard.md \
-  --request "Listen deeply. Find the most powerful, energetic chorus (20-30 seconds). Describe the song's UNIQUE visual identity: color palette, lighting mood, specific aesthetic details. SINGER-FIRST RULE: 60-70% of shots MUST be the singer (ANGLE_2 or ANGLE_8). Only cut to other instruments/crowd during clear instrumental breaks with no vocals. For ALL singer shots, the prompt MUST include 'mouth open singing, lip sync, close-up face' so LTX 2.3 generates synchronized mouth movement. For each shot: write a vivid cinematic PROMPT. Pattern: singer (4s) → brief cutaway (2s) → singer (4s) → brief cutaway (2s). NEVER generic — be hyper-specific to THIS song's vibe."
+  --request "Listen deeply. Find the most powerful, energetic chorus (20-30 seconds). Describe the song's UNIQUE visual identity: color palette, lighting mood, specific aesthetic details. SINGER-FIRST RULE: 60-70% of shots MUST be the singer (ANGLE_2 or ANGLE_8). Only cut to other instruments/crowd during clear instrumental breaks with no vocals. For ALL singer shots, the prompt MUST include 'mouth open singing, lip sync, close-up face' so LTX 2.5 generates synchronized mouth movement. For each shot: write a vivid cinematic PROMPT. Pattern: singer (4s) → brief cutaway (2s) → singer (4s) → brief cutaway (2s). NEVER generic — be hyper-specific to THIS song's vibe."
 ```
 
 **Gemini's job:** Listen to the music, understand the song's unique identity, build shot-specific prompts that bring THAT song to life. It outputs a storyboard with timing + custom prompts per shot.
@@ -93,7 +93,7 @@ Use the exact word timestamp as the real cut point.
 
 ## Step 2: Create Audio Chunks
 
-Split the chorus into clips of **3-5 seconds each** (LTX 2.3 limit: max 20s per clip):
+Split the chorus into clips of **3-5 seconds each** (LTX 2.5 Pro limit: max 10s per clip):
 
 ```bash
 mkdir -p projects/<slug>/audio/chunks
@@ -140,11 +140,11 @@ Creates `angle_1.jpg` through `angle_9.jpg`
 
 ---
 
-## Step 5: Generate Video Clips (LTX 2.3)
+## Step 5: Generate Video Clips (LTX 2.5 Pro)
 
 ```bash
 mkdir -p projects/<slug>/videos/clips
-cd /Users/aviz/.claude/skills/audio-to-video/scripts
+cd /Users/aviz/ai-music-video-maker/.claude/skills/audio-to-video/scripts
 
 npx ts-node generate.ts \
   --audio projects/<slug>/audio/chunks/chunk_01.mp3 \
@@ -262,9 +262,9 @@ export const Temp_<Slug>: React.FC = () => {
 };
 ```
 
-### Register in Root.tsx — CRITICAL: use fps={24} to match LTX 2.3 output
+### Register in Root.tsx — CRITICAL: use fps={24} to match LTX 2.5 output
 ```typescript
-// LTX 2.3 generates 24fps. Set fps={24} so Remotion matches natively — no re-encoding needed.
+// LTX 2.5 Pro generates 24fps. Set fps={24} so Remotion matches natively — no re-encoding needed.
 <Composition
   id="Temp_<Slug>"
   component={Temp_<Slug>}
@@ -339,5 +339,5 @@ projects/<slug>/
 - `imagemagick` — collage splitting
 - `ElevenLabs` — word-level transcription (`transcribe` skill)
 - `Gemini` — audio analysis + prompt generation (`audio-to-video/scripts/analyze_audio.ts`)
-- `fal.ai LTX 2.3` — video generation (`fal-ai/ltx-2.3/audio-to-video`)
+- `fal.ai LTX 2.5 Pro` — video generation (`lightricks/ltx-2.5/audio-to-video/pro`)
 - `Remotion` — lyrics overlay (`~/remotion-assistant`)

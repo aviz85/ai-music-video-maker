@@ -1,13 +1,18 @@
-// Audio to Video Generation using fal.ai LTX-2.3
+// Audio to Video Generation using fal.ai LTX-2.5 Pro
 // npm install @fal-ai/client dotenv
 
 import { fal } from '@fal-ai/client';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
+import { execFileSync } from 'child_process';
 
 // Load env from image-generation skill (has FAL_KEY)
 dotenv.config({ path: path.join(process.env.HOME || '', '.claude/skills/image-generation/scripts/.env') });
+
+const A2V_ENDPOINT = 'lightricks/ltx-2.5/audio-to-video/pro';
+const I2V_ENDPOINT = 'lightricks/ltx-2.5/image-to-video/pro';
+const PRO_MAX_AUDIO_SECONDS = 10;
 
 interface Args {
   prompt: string;
@@ -29,7 +34,7 @@ function parseArgs(argv: string[]): Args {
     audioPath: '',
     destination: '',
     size: 'landscape_16_9',
-    fps: 25,
+    fps: 24,
     quality: 'high',
     camera: 'none',
     matchAudioLength: true,
@@ -69,6 +74,21 @@ function parseArgs(argv: string[]): Args {
   return args;
 }
 
+function probeDurationSeconds(filePath: string): number | null {
+  try {
+    const out = execFileSync('ffprobe', [
+      '-v', 'error',
+      '-show_entries', 'format=duration',
+      '-of', 'default=nw=1:nk=1',
+      filePath,
+    ], { encoding: 'utf8' }).trim();
+    const n = parseFloat(out);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 async function uploadFile(filePath: string): Promise<string> {
   const buffer = fs.readFileSync(filePath);
   const ext = path.extname(filePath).toLowerCase();
@@ -93,27 +113,25 @@ async function uploadFile(filePath: string): Promise<string> {
   return url;
 }
 
-// Map old size names to LTX 2.3 aspect_ratio
 function sizeToAspectRatio(size: string): string {
   const map: Record<string, string> = {
     'landscape_16_9': '16:9',
-    'landscape_4_3': '4:3',
+    'landscape_4_3': '16:9',
     'portrait_16_9': '9:16',
-    'portrait_4_3': '3:4',
-    'square_hd': '1:1',
-    'square': '1:1',
+    'portrait_4_3': '9:16',
+    'square_hd': '16:9',
+    'square': '16:9',
     'auto': 'auto',
   };
   return map[size] || '16:9';
 }
 
-// Map quality to LTX 2.3 resolution
 function qualityToResolution(quality: string): string {
   const map: Record<string, string> = {
-    'low': '1080p',
+    'low': '720p',
     'medium': '1080p',
     'high': '1080p',
-    'maximum': '1440p',
+    'maximum': '1080p',
   };
   return map[quality] || '1080p';
 }
@@ -121,7 +139,6 @@ function qualityToResolution(quality: string): string {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
-  // Validation
   if (!args.audioPath && !args.imagePath) {
     console.error('Error: --audio or --image is required');
     process.exit(1);
@@ -139,14 +156,25 @@ async function main() {
     process.exit(1);
   }
 
-  // Configure fal
+  if (args.audioPath) {
+    const dur = probeDurationSeconds(args.audioPath);
+    if (dur !== null && dur > PRO_MAX_AUDIO_SECONDS) {
+      console.error(`Error: LTX 2.5 Pro audio max is ${PRO_MAX_AUDIO_SECONDS}s (got ${dur.toFixed(2)}s). Split the chunk.`);
+      process.exit(1);
+    }
+    if (dur !== null && dur < 2) {
+      console.error(`Error: LTX 2.5 audio must be at least 2s (got ${dur.toFixed(2)}s).`);
+      process.exit(1);
+    }
+  }
+
   fal.config({ credentials: process.env.FAL_KEY });
 
   const aspectRatio = sizeToAspectRatio(args.size);
   const resolution = qualityToResolution(args.quality);
 
-  console.log('Audio to Video Generation - LTX 2.3');
-  console.log('=====================================');
+  console.log('Audio to Video Generation - LTX 2.5 Pro');
+  console.log('=======================================');
   if (args.audioPath) console.log(`Audio: ${args.audioPath}`);
   if (args.imagePath) console.log(`Image: ${args.imagePath}`);
   if (args.endImagePath) console.log(`End Image: ${args.endImagePath}`);
@@ -156,7 +184,6 @@ async function main() {
   if (args.prompt) console.log(`Prompt: "${args.prompt}"`);
   console.log('');
 
-  // Upload files
   console.log('Uploading files...');
   const audioUrl = args.audioPath ? await uploadFile(args.audioPath) : undefined;
   const imageUrl = args.imagePath ? await uploadFile(args.imagePath) : undefined;
@@ -166,38 +193,36 @@ async function main() {
   let input: Record<string, any>;
 
   if (audioUrl) {
-    // Audio-to-video: LTX 2.3 audio-to-video endpoint (2-20 sec audio)
-    endpoint = 'fal-ai/ltx-2.3/audio-to-video';
+    endpoint = A2V_ENDPOINT;
     input = {
       audio_url: audioUrl,
+      aspect_ratio: aspectRatio,
     };
     if (args.prompt) input.prompt = args.prompt;
     if (imageUrl) input.image_url = imageUrl;
-    // guidance_scale: default 5 without image, 9 with image
     if (args.guidanceScale !== undefined) {
       input.guidance_scale = args.guidanceScale;
     } else if (imageUrl) {
       input.guidance_scale = 9;
     }
   } else {
-    // Image-to-video: LTX 2.3 image-to-video endpoint
-    endpoint = 'fal-ai/ltx-2.3/image-to-video';
+    endpoint = I2V_ENDPOINT;
     input = {
       image_url: imageUrl,
       prompt: args.prompt,
       aspect_ratio: aspectRatio,
-      resolution: resolution,
+      resolution,
       fps: args.fps,
       generate_audio: false,
     };
     if (endImageUrl) input.end_image_url = endImageUrl;
     if (args.guidanceScale !== undefined) input.guidance_scale = args.guidanceScale;
+    if (args.camera && args.camera !== 'none') input.camera_motion = args.camera;
   }
 
   console.log(`Using endpoint: ${endpoint}`);
   console.log('Input:', JSON.stringify(input, null, 2));
 
-  // Generate video
   console.log('\nGenerating video...');
   const result = await fal.subscribe(endpoint, {
     input,
@@ -209,14 +234,28 @@ async function main() {
     },
   });
 
-  // Download result
   const videoUrl = result.data?.video?.url || result.data?.url;
   if (videoUrl) {
     console.log(`\nDownloading from: ${videoUrl}`);
-    const response = await fetch(videoUrl);
-    const buffer = Buffer.from(await response.arrayBuffer());
+    let lastErr: unknown;
+    let buffer: Buffer | null = null;
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      try {
+        const response = await fetch(videoUrl);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        buffer = Buffer.from(await response.arrayBuffer());
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        console.error(`Download attempt ${attempt} failed:`, (err as Error).message || err);
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+      }
+    }
+    if (!buffer) {
+      throw lastErr instanceof Error ? lastErr : new Error('Download failed');
+    }
 
-    // Ensure destination directory exists
     const destDir = path.dirname(args.destination);
     if (!fs.existsSync(destDir)) {
       fs.mkdirSync(destDir, { recursive: true });

@@ -124,7 +124,7 @@ If making a shorter video, USE THIS SECTION:
 Format: [START-END] ANGLE_X - Description | AUDIO REASON | LYRICS: "exact lyrics heard" | PROMPT: "video generation prompt"
 
 **CRITICAL: Include LYRICS field for EVERY shot where vocals are heard. Write the EXACT words sung during that shot. This is essential for timing alignment.**
-**CRITICAL: Include PROMPT field for EVERY shot. This is the exact text passed to LTX 2.3 video generation.**
+**CRITICAL: Include PROMPT field for EVERY shot. This is the exact text passed to LTX 2.5 video generation.**
 
 [0:00-0:03] ANGLE_1 - Wide establishing shot | Full band playing intro | LYRICS: (instrumental) | PROMPT: "LIVE CONCERT: Full band on stage, wide shot, dramatic lighting, crowd energy, 4K cinematic"
 [0:03-0:05] ANGLE_4 - Drummer close-up | Drum fill prominent here | LYRICS: (instrumental) | PROMPT: "LIVE CONCERT: Drummer close-up, sticks hitting cymbals, intense expression, motion blur"
@@ -136,7 +136,7 @@ Format: [START-END] ANGLE_X - Description | AUDIO REASON | LYRICS: "exact lyrics
 - Shot length: 2-5 seconds each (vary based on energy - faster cuts for high energy, longer for emotional moments)
 - EVERY shot must have AUDIO REASON explaining why that angle
 - EVERY shot with vocals MUST include LYRICS field with exact words
-- EVERY shot MUST include PROMPT field for LTX 2.3 video generation
+- EVERY shot MUST include PROMPT field for LTX 2.5 video generation
 - Show what we HEAR - vocals = singer, guitar = guitarist, etc.
 - Cut on beat changes
 - More cuts during high energy sections
