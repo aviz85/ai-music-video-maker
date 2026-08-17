@@ -24,6 +24,15 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# OpenWolf — track learning files, ignore session/runtime data
+.wolf/hooks/
+.wolf/token-ledger.json
+.wolf/hooks/_session.json
+.wolf/cron-state.json
+.wolf/designqc-captures/
+.wolf/suggestions.json
+.wolf/daemon.log
+
 # IDE
 .idea/
 .vscode/
