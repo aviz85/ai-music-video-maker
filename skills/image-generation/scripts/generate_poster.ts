@@ -12,13 +12,17 @@ import {
 } from '@google/genai';
 import { fal } from '@fal-ai/client';
 import mime from 'mime';
-import { writeFile, copyFileSync, existsSync, readFileSync } from 'fs';
+import { writeFile, writeFileSync, copyFileSync, existsSync, readFileSync } from 'fs';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const ATLAS_API_BASE = 'https://api.atlascloud.ai/api/v1';
+const ATLAS_TEXT_MODEL = 'google/nano-banana-2/text-to-image-developer';
+const ATLAS_EDIT_MODEL = 'google/nano-banana-2/edit-developer';
 
 // Load environment variables
 dotenv.config();
@@ -74,14 +78,16 @@ interface ParsedArgs {
   destination: string | null;
   quality: string;
   cheap: boolean;
+  atlas: boolean;
 }
 
-function parseArgs(args: string[]): ParsedArgs {
+export function parseArgs(args: string[]): ParsedArgs {
   let aspectRatio = '3:2'; // default - best for most social media
   let assets: string[] = [];
   let destination: string | null = null;
   let quality = '1K'; // default quality
   let cheap = false;
+  let atlas = false;
   let promptParts: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
@@ -108,6 +114,8 @@ function parseArgs(args: string[]): ParsedArgs {
       }
     } else if (args[i] === '--cheap' || args[i] === '-c') {
       cheap = true;
+    } else if (args[i] === '--atlas') {
+      atlas = true;
     } else if (args[i] === '--save-to-gallery') {
       if (args[i + 1]) {
         i++; // skip next arg (gallery name)
@@ -117,7 +125,173 @@ function parseArgs(args: string[]): ParsedArgs {
     }
   }
 
-  return { prompt: promptParts.join(' '), aspectRatio, assets, destination, quality, cheap };
+  return { prompt: promptParts.join(' '), aspectRatio, assets, destination, quality, cheap, atlas };
+}
+
+export class AtlasHttpError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'AtlasHttpError';
+    this.status = status;
+  }
+}
+
+type FetchImplementation = typeof fetch;
+
+async function atlasRequestJson<T>(
+  url: string,
+  init: RequestInit,
+  fetchImpl: FetchImplementation = fetch
+): Promise<T> {
+  const response = await fetchImpl(url, init);
+  const responseText = await response.text();
+  let envelope: any;
+
+  try {
+    envelope = JSON.parse(responseText);
+  } catch {
+    if (!response.ok) {
+      throw new AtlasHttpError(response.status, `Atlas request failed (${response.status})`);
+    }
+    throw new Error('Atlas returned an invalid JSON response');
+  }
+
+  if (!response.ok) {
+    throw new AtlasHttpError(
+      response.status,
+      `Atlas request failed (${response.status}): ${envelope.message || 'unknown error'}`
+    );
+  }
+  if (envelope.code !== undefined && ![0, 200, '200'].includes(envelope.code)) {
+    throw new Error(`Atlas request failed: ${envelope.message || 'unknown error'}`);
+  }
+  return (envelope.data ?? envelope) as T;
+}
+
+const sleep = (milliseconds: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+
+export async function submitAtlasGeneration(
+  payload: Record<string, unknown>,
+  apiKey: string,
+  fetchImpl: FetchImplementation = fetch
+): Promise<{ id: string }> {
+  return atlasRequestJson<{ id: string }>(
+    `${ATLAS_API_BASE}/model/generateImage`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+    fetchImpl
+  );
+}
+
+export async function getAtlasPrediction(
+  requestId: string,
+  apiKey: string,
+  maxGetRetries = 3,
+  fetchImpl: FetchImplementation = fetch,
+  sleepImpl: (milliseconds: number) => Promise<void> = sleep
+): Promise<any> {
+  for (let attempt = 0; attempt <= maxGetRetries; attempt++) {
+    try {
+      return await atlasRequestJson<any>(
+        `${ATLAS_API_BASE}/model/prediction/${encodeURIComponent(requestId)}`,
+        { headers: { Authorization: `Bearer ${apiKey}` } },
+        fetchImpl
+      );
+    } catch (error) {
+      const transient =
+        (error instanceof AtlasHttpError && (error.status === 429 || error.status >= 500)) ||
+        error instanceof TypeError;
+      if (!transient || attempt === maxGetRetries) throw error;
+      await sleepImpl(Math.min(1000 * 2 ** attempt, 4000));
+    }
+  }
+  throw new Error('Atlas prediction request failed');
+}
+
+async function uploadAtlasAsset(assetPath: string, apiKey: string): Promise<string> {
+  const form = new FormData();
+  const content = new Uint8Array(readFileSync(assetPath));
+  form.append('file', new Blob([content]), path.basename(assetPath));
+  const result = await atlasRequestJson<{ download_url?: string }>(
+    `${ATLAS_API_BASE}/model/uploadMedia`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    }
+  );
+  if (!result.download_url) throw new Error('Atlas upload completed without a download URL');
+  return result.download_url;
+}
+
+async function pollAtlasPrediction(requestId: string, apiKey: string): Promise<string> {
+  for (let poll = 0; poll < 100; poll++) {
+    const prediction = await getAtlasPrediction(requestId, apiKey);
+    if (['completed', 'succeeded'].includes(prediction.status)) {
+      const output = prediction.outputs?.[0];
+      if (!output) throw new Error('Atlas generation completed without an output URL');
+      return output;
+    }
+    if (prediction.status === 'failed') {
+      throw new Error(`Atlas generation failed: ${prediction.error || 'unknown error'}`);
+    }
+    await sleep(2000);
+  }
+  throw new Error('Atlas image generation timed out');
+}
+
+async function generateWithAtlas(
+  prompt: string,
+  aspectRatio: string,
+  assets: string[],
+  destination: string | null,
+  quality: string
+): Promise<void> {
+  const apiKey = process.env.ATLASCLOUD_API_KEY;
+  if (!apiKey) {
+    console.error('Error: ATLASCLOUD_API_KEY not found in environment variables');
+    process.exit(1);
+  }
+
+  const imageUrls: string[] = [];
+  for (const assetPath of assets) {
+    console.log(`Uploading asset to Atlas Cloud: ${assetPath}...`);
+    imageUrls.push(await uploadAtlasAsset(assetPath, apiKey));
+  }
+
+  const model = imageUrls.length > 0 ? ATLAS_EDIT_MODEL : ATLAS_TEXT_MODEL;
+  const payload: Record<string, unknown> = {
+    model,
+    prompt,
+    aspect_ratio: aspectRatio,
+    resolution: quality.toLowerCase(),
+  };
+  if (imageUrls.length > 0) payload.images = imageUrls;
+
+  console.log(`Generating with Atlas Cloud (${model})...`);
+  const generation = await submitAtlasGeneration(payload, apiKey);
+  if (!generation.id) throw new Error('Atlas generation did not return a prediction ID');
+  const outputUrl = await pollAtlasPrediction(generation.id, apiKey);
+
+  const response = await fetch(outputUrl);
+  if (!response.ok) throw new Error(`Could not download Atlas output (${response.status})`);
+  const localFile = 'poster_0.jpg';
+  writeFileSync(localFile, Buffer.from(await response.arrayBuffer()));
+  console.log(`File ${localFile} saved to file system.`);
+
+  if (destination) {
+    const finalPath = copyToDestination(localFile, destination);
+    console.log(`Copied to: ${finalPath}`);
+  }
 }
 
 // Generate with fal.ai FLUX.2 klein 4B
@@ -342,9 +516,9 @@ async function generateWithGemini(
   }
 }
 
-async function main() {
+export async function main() {
   // Get prompt and options from command-line arguments
-  const { prompt, aspectRatio, assets, destination, quality, cheap } = parseArgs(process.argv.slice(2));
+  const { prompt, aspectRatio, assets, destination, quality, cheap, atlas } = parseArgs(process.argv.slice(2));
 
   if (!prompt) {
     console.error('Error: Please provide a prompt as a command-line argument');
@@ -352,8 +526,9 @@ async function main() {
     console.error('');
     console.error('Options:');
     console.error('  --cheap, -c        Use fal.ai FLUX.2 klein 4B (fast, low cost)');
+    console.error('  --atlas            Use Atlas Cloud Nano Banana 2');
     console.error('  --aspect, -a       Aspect ratio (1:1, 3:2, 2:3, 16:9, 9:16) - default: 3:2');
-    console.error('  --quality, -q      Image quality (1K, 2K) - default: 1K (Gemini only)');
+    console.error('  --quality, -q      Image quality (1K, 2K) - default: 1K (Gemini/Atlas)');
     console.error('  --assets           Comma-separated paths to reference images');
     console.error('  --destination, -d  Copy output to this path (auto-suffixes if exists)');
     console.error('');
@@ -366,6 +541,11 @@ async function main() {
     process.exit(1);
   }
 
+  if (cheap && atlas) {
+    console.error('Error: --cheap and --atlas select different providers and cannot be combined');
+    process.exit(1);
+  }
+
   // Validate aspect ratio
   const validRatios = ['1:1', '3:2', '2:3', '16:9', '9:16'];
   if (!validRatios.includes(aspectRatio)) {
@@ -374,7 +554,12 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Provider: ${cheap ? 'fal.ai FLUX.2 klein 4B' : 'Google Gemini'}`);
+  const provider = atlas
+    ? 'Atlas Cloud Nano Banana 2'
+    : cheap
+      ? 'fal.ai FLUX.2 klein 4B'
+      : 'Google Gemini';
+  console.log(`Provider: ${provider}`);
   console.log(`Aspect ratio: ${aspectRatio}`);
   if (!cheap) console.log(`Quality: ${quality}`);
   if (assets.length > 0) {
@@ -386,11 +571,15 @@ async function main() {
   console.log(`Prompt: "${prompt}"`);
   console.log('');
 
-  if (cheap) {
+  if (atlas) {
+    await generateWithAtlas(prompt, aspectRatio, assets, destination, quality);
+  } else if (cheap) {
     await generateWithFal(prompt, aspectRatio, assets, destination);
   } else {
     await generateWithGemini(prompt, aspectRatio, assets, destination, quality);
   }
 }
 
-main();
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main();
+}

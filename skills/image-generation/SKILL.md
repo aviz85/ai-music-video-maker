@@ -1,11 +1,11 @@
 ---
 name: image-generation
-description: "Generate images with Gemini (default) or fal.ai FLUX.2 klein 4B (--cheap for fast/low-cost). Use for: create image, generate visual, AI image generation, poster."
+description: "Generate images with Gemini (default), fal.ai FLUX.2 klein 4B (--cheap), or Atlas Cloud Nano Banana 2 (--atlas). Use for: create image, generate visual, AI image generation, poster."
 ---
 
 # Image Generation
 
-Generate images using Google's Gemini model (default) or fal.ai FLUX.2 klein 4B (cheap mode).
+Generate images using Google's Gemini model (default), fal.ai FLUX.2 klein 4B (cheap mode), or Atlas Cloud Nano Banana 2 (optional).
 
 ## Quick Start
 
@@ -19,6 +19,9 @@ npx ts-node generate_poster.ts -d /tmp/my-image.jpg "A futuristic city at sunset
 
 # Cheap mode: fal.ai FLUX.2 klein 4B (fast, lower cost)
 npx ts-node generate_poster.ts --cheap -d /tmp/city.jpg "A futuristic city at sunset"
+
+# Atlas Cloud: Nano Banana 2 (requires ATLASCLOUD_API_KEY)
+npx ts-node generate_poster.ts --atlas -d /tmp/atlas-city.jpg "A futuristic city at sunset"
 
 # With aspect ratio
 npx ts-node generate_poster.ts -d /tmp/landscape.jpg --aspect 3:2 "A wide landscape poster"
@@ -40,6 +43,13 @@ npx ts-node generate_poster.ts --cheap -d /tmp/photo.jpg --assets "/path/to/imag
 |----------|------|----------|------|
 | **Gemini** | (default) | High quality, best results | Higher |
 | **fal.ai klein 4B** | `--cheap` | Fast, budget-friendly | ~$0.003/image |
+| **Atlas Cloud Nano Banana 2** | `--atlas` | Unified text-to-image and image editing | Usage-based |
+
+### Atlas Cloud Mode (`--atlas`)
+
+Atlas Cloud uses `google/nano-banana-2/text-to-image-developer` for prompts and automatically switches to `google/nano-banana-2/edit-developer` when `--assets` is provided. Gemini remains the default provider.
+
+The script uploads local reference images once, submits each generation request once, and retries only transient prediction GET requests within a fixed bound.
 
 ### Cheap Mode (`--cheap`)
 
@@ -149,6 +159,7 @@ Create `scripts/.env`:
 ```
 GEMINI_API_KEY=your_gemini_api_key
 FAL_KEY=your_fal_api_key
+ATLASCLOUD_API_KEY=your_atlascloud_api_key
 ```
 
 ## Hebrew/RTL Content
